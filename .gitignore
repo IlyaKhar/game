@@ -1,0 +1,21 @@
+# Dependencies & build artifacts
+frontend/node_modules/
+frontend/dist/
+backend/bin/
+*.tsbuildinfo
+
+# Local databases & runtime data
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets & environment
+.env
+.env.local
+.env.*.local
+
+# OS & logs
+.DS_Store
+*.log
+npm-debug.log*

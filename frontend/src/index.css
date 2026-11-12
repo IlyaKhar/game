@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --font-display: "Montserrat", system-ui, -apple-system, sans-serif;
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  html,
+  body {
+    font-family: var(--font-ui);
+    background-color: #120724;
+    color: #ffffff;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Crisp arcade stroke & 3D extrusion matching the festival title */
+.okei-title-white {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  -webkit-text-stroke: 3px #1b0a33;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 5px 0 #1b0a33) drop-shadow(0 0 18px rgba(236, 72, 153, 0.45));
+}
+
+.okei-title-pink {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  color: #ff2e93;
+  letter-spacing: -0.02em;
+  -webkit-text-stroke: 3px #1b0a33;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 4px 0 #1b0a33) drop-shadow(0 0 22px rgba(255, 46, 147, 0.75));
+}
+
+.okei-slogan-neon {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  color: #ffffff;
+  letter-spacing: 0.03em;
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(255, 46, 147, 0.75);
+}
+
+/* Neon card borders matching alternating pink/blue glow */
+.neon-card-pink {
+  border: 2.5px solid #ff66d9;
+  box-shadow:
+    0 0 18px rgba(255, 46, 147, 0.65),
+    0 0 42px rgba(168, 85, 247, 0.35),
+    inset 0 0 18px rgba(255, 46, 147, 0.2);
+}
+
+.neon-card-blue {
+  border: 2.5px solid #7c83ff;
+  box-shadow:
+    0 0 18px rgba(99, 102, 241, 0.7),
+    0 0 42px rgba(56, 189, 248, 0.35),
+    inset 0 0 18px rgba(99, 102, 241, 0.22);
+}
+
+.neon-card-pink:hover,
+.neon-card-pink:focus-within {
+  border-color: #ff99e8;
+  box-shadow:
+    0 0 26px rgba(255, 46, 147, 0.9),
+    0 0 56px rgba(236, 72, 153, 0.55),
+    inset 0 0 24px rgba(255, 46, 147, 0.3);
+}
+
+.neon-card-blue:hover,
+.neon-card-blue:focus-within {
+  border-color: #a5b4fc;
+  box-shadow:
+    0 0 26px rgba(99, 102, 241, 0.95),
+    0 0 56px rgba(56, 189, 248, 0.55),
+    inset 0 0 24px rgba(99, 102, 241, 0.3);
+}
+
+/* Form validation after user interaction (modern-web-guidance) */
+.fest-input {
+  font: inherit;
+  font-size: max(1rem, 1em);
+  min-height: 48px;
+}
+
+.fest-input:focus-visible {
+  outline: 2px solid #f472b6;
+  outline-offset: 2px;
+}
+
+.fest-input:is(:user-invalid, .user-invalid-fallback) {
+  border-color: #fb7185;
+  background-color: rgba(136, 19, 55, 0.35);
+}
+
+.fest-input:is(:user-invalid, .user-invalid-fallback) + .fest-error-msg {
+  display: flex;
+}
+
+.fest-error-msg {
+  display: none;
+}
+
+/* Native <dialog> modal scroll containment (modern-web-guidance) */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  background: rgba(10, 4, 24, 0.78);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Subtle animations */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 3.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow {
+    animation: none;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
