@@ -52,23 +52,35 @@ func (s *FestivalService) Enter(ctx context.Context, req domain.EnterRequest) (s
 	fullName := collapseSpaces(req.FullName)
 	groupName := strings.ToUpper(collapseSpaces(req.GroupName))
 
-	if len([]rune(fullName)) < 3 || len([]rune(fullName)) > 120 {
-		return "", domain.PlayerSummary{}, fmt.Errorf("%w: ФИО должно содержать от 3 до 120 символов", domain.ErrInvalidInput)
+	if len([]rune(fullName)) < 5 || len([]rune(fullName)) > 100 {
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите реальные Фамилию и Имя (от 5 символов)", domain.ErrInvalidInput)
 	}
 
 	parts := strings.Fields(fullName)
-	if len(parts) < 2 {
-		return "", domain.PlayerSummary{}, fmt.Errorf("%w: введите фамилию и имя через пробел", domain.ErrInvalidInput)
+	if len(parts) < 2 || len(parts) > 3 {
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: введите Фамилию и Имя через пробел", domain.ErrInvalidInput)
 	}
 
-	for _, r := range fullName {
-		if !unicode.Is(unicode.Cyrillic, r) && r != ' ' && r != '-' {
-			return "", domain.PlayerSummary{}, fmt.Errorf("%w: ФИО должно содержать только русские буквы", domain.ErrInvalidInput)
+	for _, part := range parts {
+		runes := []rune(part)
+		if len(runes) < 2 {
+			return "", domain.PlayerSummary{}, fmt.Errorf("%w: каждое слово в ФИО должно содержать минимум 2 буквы", domain.ErrInvalidInput)
+		}
+		for _, r := range runes {
+			if !unicode.Is(unicode.Cyrillic, r) && r != '-' {
+				return "", domain.PlayerSummary{}, fmt.Errorf("%w: ФИО должно содержать только русские буквы", domain.ErrInvalidInput)
+			}
 		}
 	}
 
-	if len([]rune(groupName)) < 2 || len([]rune(groupName)) > 40 {
-		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите корректную группу (от 2 символов)", domain.ErrInvalidInput)
+	if len([]rune(groupName)) < 2 || len([]rune(groupName)) > 20 {
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите корректную группу (например, ИСП-21)", domain.ErrInvalidInput)
+	}
+
+	for _, r := range groupName {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
+			return "", domain.PlayerSummary{}, fmt.Errorf("%w: название группы может содержать только буквы, цифры и дефис", domain.ErrInvalidInput)
+		}
 	}
 
 	player, err := s.store.FindOrCreatePlayer(ctx, fullName, groupName)
