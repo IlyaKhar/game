@@ -4,8 +4,10 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 
 	"okei-fest-backend/internal/domain"
 	"okei-fest-backend/internal/service"
@@ -37,9 +39,17 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	api.Post("/auth/enter", h.enter)
 	api.Get("/leaderboard", h.leaderboard)
 
+	scoresLimiter := limiter.New(limiter.Config{
+		Max:        30,
+		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "слишком частые запросы"})
+		},
+	})
+
 	// Player-authenticated routes
 	api.Get("/me", h.requireRole("player"), h.getMe)
-	api.Post("/scores", h.requireRole("player"), h.submitScore)
+	api.Post("/scores", h.requireRole("player"), scoresLimiter, h.submitScore)
 
 	// Admin routes
 	api.Post("/admin/login", h.adminLogin)
