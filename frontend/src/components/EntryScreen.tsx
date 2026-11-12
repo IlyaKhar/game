@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Gamepad2, Sparkles, Trophy, UserCheck, Users } from 'lucide-react';
+import { Gamepad2, Trophy, UserCheck, Users } from 'lucide-react';
 import { BrandHeader } from './BrandHeader';
 import { SloganBadge } from './SloganBadge';
 
@@ -89,40 +89,42 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
     <div className="relative flex min-h-dvh flex-col justify-between">
       <BrandHeader player={null} onSecretAdmin={onSecretAdmin} />
 
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center px-4 py-6">
+      <main className="mx-auto flex w-full max-w-[460px] flex-1 flex-col items-center justify-center px-4 py-3">
         <section
           aria-labelledby="entry-heading"
-          className="neon-card-pink w-full rounded-3xl bg-[#160730]/88 p-6 backdrop-blur-xl sm:p-8"
+          className="relative w-full overflow-hidden rounded-[28px] border-2 border-[#ff47b3]/85 bg-gradient-to-b from-[#1a0738]/92 via-[#13052b]/95 to-[#1d083d]/92 p-6 shadow-[0_18px_50px_rgba(8,2,20,0.9),0_0_32px_rgba(255,46,147,0.38)] backdrop-blur-xl sm:p-8"
         >
+          {/* Top neon highlight */}
+          <div
+            className="pointer-events-none absolute inset-x-10 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#ff66d9] to-transparent opacity-90"
+            aria-hidden="true"
+          />
+
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/15 px-3.5 py-1 text-xs font-bold tracking-wider text-fuchsia-200 uppercase">
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
-              Регистрация участника
-            </div>
             <h2
               id="entry-heading"
-              className="font-display text-2xl font-black italic tracking-tight text-white uppercase sm:text-3xl"
+              className="font-display text-[26px] font-black italic leading-[1.02] tracking-tight text-white uppercase drop-shadow-[0_3px_12px_rgba(0,0,0,0.7)] sm:text-[32px]"
             >
-              Выйди на новый уровень
+              ВЫЙДИ НА{' '}
+              <span className="block text-[#ff47b3] drop-shadow-[0_0_16px_rgba(255,71,179,0.65)]">
+                НОВЫЙ УРОВЕНЬ
+              </span>
             </h2>
-            <p className="mt-1.5 text-sm text-fuchsia-200/85">
-              Укажи свои ФИО и группу — результаты всех 5 игр пойдут в общий зачёт колледжа.
+            <p className="mt-2 text-xs font-medium text-fuchsia-200/80 sm:text-sm">
+              Введи ФИО и группу — очки всех 5 игр пойдут в рейтинг
             </p>
           </div>
 
-          <form method="POST" onSubmit={handleSubmit} noValidate className="space-y-5">
+          <form method="POST" onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Full Name */}
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="student-fullname"
-                className="flex items-center gap-2 text-sm font-semibold text-fuchsia-100"
+                className="flex items-center gap-2 font-display text-xs font-extrabold italic tracking-wide text-fuchsia-100 uppercase sm:text-sm"
               >
-                <UserCheck className="h-4 w-4 text-fuchsia-400" aria-hidden="true" />
+                <UserCheck className="h-4 w-4 text-[#ff47b3]" aria-hidden="true" />
                 ФИО <span aria-hidden="true" className="text-pink-400">*</span>
               </label>
-              <span id="fullname-hint" className="text-xs text-fuchsia-300/75">
-                Например: Иванов Иван Иванович (от 3 символов)
-              </span>
               <input
                 ref={nameRef}
                 id="student-fullname"
@@ -133,7 +135,6 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                 maxLength={80}
                 autoComplete="name"
                 enterKeyHint="next"
-                aria-describedby="fullname-hint"
                 aria-invalid={!!nameError}
                 value={fullName}
                 onChange={(e) => {
@@ -145,9 +146,11 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                     setNameError(validateName(fullName));
                   }
                 }}
-                placeholder="Фамилия Имя"
-                className={`fest-input w-full rounded-xl border-2 bg-[#230c47]/80 px-4 py-3 text-white placeholder:text-fuchsia-300/40 transition ${
-                  nameError ? 'user-invalid-fallback border-rose-400' : 'border-fuchsia-500/45 focus:border-fuchsia-400'
+                placeholder="Иванов Иван Иванович"
+                className={`fest-input w-full rounded-2xl border-2 bg-[#210a42]/90 px-4 py-3.5 text-white placeholder:text-fuchsia-300/40 shadow-inner transition focus:outline-none ${
+                  nameError
+                    ? 'user-invalid-fallback border-rose-400'
+                    : 'border-fuchsia-500/45 focus:border-[#ff47b3] focus:shadow-[0_0_18px_rgba(255,71,179,0.3)]'
                 }`}
               />
               {nameError && (
@@ -161,14 +164,11 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="student-group"
-                className="flex items-center gap-2 text-sm font-semibold text-fuchsia-100"
+                className="flex items-center gap-2 font-display text-xs font-extrabold italic tracking-wide text-fuchsia-100 uppercase sm:text-sm"
               >
-                <Users className="h-4 w-4 text-indigo-400" aria-hidden="true" />
+                <Users className="h-4 w-4 text-[#38bdf8]" aria-hidden="true" />
                 Учебная группа <span aria-hidden="true" className="text-pink-400">*</span>
               </label>
-              <span id="group-hint" className="text-xs text-fuchsia-300/75">
-                Формат: ИСП-31, БД-21, ЭК-11
-              </span>
               <input
                 ref={groupRef}
                 id="student-group"
@@ -180,7 +180,6 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                 autoCorrect="off"
                 spellCheck={false}
                 enterKeyHint="done"
-                aria-describedby="group-hint"
                 aria-invalid={!!groupError}
                 value={groupName}
                 onChange={(e) => {
@@ -192,9 +191,11 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                     setGroupError(validateGroup(groupName));
                   }
                 }}
-                placeholder="Впиши свою группу"
-                className={`fest-input w-full rounded-xl border-2 bg-[#230c47]/80 px-4 py-3 text-white uppercase placeholder:normal-case placeholder:text-fuchsia-300/40 transition ${
-                  groupError ? 'user-invalid-fallback border-rose-400' : 'border-indigo-400/50 focus:border-indigo-300'
+                placeholder="Например: ИСП-31"
+                className={`fest-input w-full rounded-2xl border-2 bg-[#210a42]/90 px-4 py-3.5 text-white uppercase placeholder:normal-case placeholder:text-fuchsia-300/40 shadow-inner transition focus:outline-none ${
+                  groupError
+                    ? 'user-invalid-fallback border-rose-400'
+                    : 'border-indigo-400/50 focus:border-[#38bdf8] focus:shadow-[0_0_18px_rgba(56,189,248,0.28)]'
                 }`}
               />
               {groupError && (
@@ -208,7 +209,7 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
               <div
                 role="status"
                 aria-live="polite"
-                className="rounded-xl border border-rose-400/60 bg-rose-950/60 px-4 py-2.5 text-sm font-medium text-rose-200"
+                className="rounded-2xl border border-rose-400/60 bg-rose-950/60 px-4 py-2.5 text-sm font-medium text-rose-200"
               >
                 {serverError}
               </div>
@@ -217,28 +218,25 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="font-display flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#ff2e93] via-[#d946ef] to-[#7c3aed] px-6 py-3.5 text-base font-black italic tracking-wide text-white uppercase shadow-[0_0_24px_rgba(255,46,147,0.65)] transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
+              className="font-display mt-2 flex min-h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#ff2e93] via-[#d946ef] to-[#7c3aed] px-6 py-3.5 text-base font-black italic tracking-wide text-white uppercase shadow-[0_0_26px_rgba(255,46,147,0.65)] transition hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             >
               <Gamepad2 className="h-5 w-5" aria-hidden="true" />
               {submitting ? 'Загружаем арену...' : 'Начать фестиваль'}
             </button>
           </form>
-
-          <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 text-xs text-fuchsia-200/75">
-            <span>5 игр • общий рейтинг</span>
-            <button
-              type="button"
-              onClick={onViewLeaderboard}
-              className="inline-flex items-center gap-1.5 font-semibold text-amber-300 transition hover:text-amber-200"
-            >
-              <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
-              Смотреть таблицу лидеров
-            </button>
-          </div>
         </section>
       </main>
 
-      <footer className="flex items-center justify-end px-4 pb-5 sm:px-8">
+      <footer className="flex flex-wrap items-center justify-between gap-4 px-4 pb-5 sm:px-8">
+        <button
+          type="button"
+          onClick={onViewLeaderboard}
+          className="flex min-h-[44px] items-center gap-2 rounded-full border-2 border-indigo-400/80 bg-[#1a0b3b]/90 px-5 py-2 font-display text-xs font-black italic tracking-wider text-white uppercase shadow-[0_0_16px_rgba(99,102,241,0.45)] transition hover:border-amber-300/80 hover:brightness-110 active:scale-95 sm:text-sm"
+        >
+          <Trophy className="h-4 w-4 text-amber-300" aria-hidden="true" />
+          ТАБЛИЦА ЛИДЕРОВ
+        </button>
+
         <SloganBadge />
       </footer>
     </div>

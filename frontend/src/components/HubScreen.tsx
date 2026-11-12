@@ -29,7 +29,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({
       />
 
       {/* Center-Bottom 5 Full-Bleed Portrait Neon Cards matching the mockup */}
-      <main className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col justify-end px-4 pb-4 pt-4 sm:px-8 sm:pb-6">
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col justify-end px-4 pb-3 pt-2 sm:px-8 sm:pb-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:gap-5">
           {FESTIVAL_GAMES.map((game) => {
             const best = player.games[game.id];
@@ -39,7 +39,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({
               <article
                 key={game.id}
                 onClick={() => onPlayGame(game.id)}
-                className={`group relative aspect-[3/3.65] w-full cursor-pointer overflow-hidden rounded-[28px] bg-[#14072b] transition-all duration-300 hover:-translate-y-2 ${
+                className={`group relative aspect-[3/3.45] w-full cursor-pointer overflow-hidden rounded-[26px] bg-[#14072b] transition-all duration-300 hover:-translate-y-2 ${
                   isPink ? 'neon-card-pink' : 'neon-card-blue'
                 }`}
               >
@@ -102,10 +102,13 @@ export const HubScreen: React.FC<HubScreenProps> = ({
           <button
             type="button"
             onClick={onOpenResults}
-            className="flex min-h-[44px] items-center gap-2 rounded-full border-2 border-indigo-400/80 bg-[#1a0b3b]/90 px-5 py-2 font-display text-xs font-black italic tracking-wider text-indigo-100 uppercase shadow-[0_0_16px_rgba(99,102,241,0.4)] transition hover:bg-indigo-900/60 active:scale-95 sm:text-sm"
+            className="flex min-h-[44px] items-center gap-2 rounded-full border-2 border-indigo-400/85 bg-gradient-to-r from-[#1f0d47]/95 to-[#2d1261]/95 px-5 py-2 font-display text-xs font-black italic tracking-wider text-white uppercase shadow-[0_0_18px_rgba(99,102,241,0.45)] transition hover:border-amber-300/80 hover:brightness-110 active:scale-95 sm:text-sm"
           >
             <Trophy className="h-4 w-4 text-amber-300" aria-hidden="true" />
-            ОБЩИЙ РЕЗУЛЬТАТ
+            ИТОГИ
+            <span className="rounded-full border border-amber-300/60 bg-amber-400/20 px-2 py-0.5 text-[11px] font-black not-italic text-[#fde047]">
+              {player.games_done}/5
+            </span>
           </button>
         </div>
 

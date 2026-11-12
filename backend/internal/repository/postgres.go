@@ -62,6 +62,12 @@ func NewStore(dsn string) (*Store, error) {
 	if err := db.AutoMigrate(&domain.Player{}, &domain.Score{}); err != nil {
 		return nil, err
 	}
+	if err := backfillAndDeduplicatePlayers(db); err != nil {
+		return nil, err
+	}
+	if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_players_normalized_key ON players (normalized_key)").Error; err != nil {
+		return nil, err
+	}
 
 	return &Store{db: db}, nil
 }
@@ -75,11 +81,99 @@ func (s *Store) Close() error {
 	return sqlDB.Close()
 }
 
-// FindOrCreatePlayer looks up a player case-insensitively by full name and group, creating one if absent.
+// MakePlayerKey builds a Unicode-normalized lookup key so Cyrillic case differences never create duplicates.
+func MakePlayerKey(fullName, groupName string) string {
+	norm := func(v string) string {
+		s := strings.Join(strings.Fields(strings.TrimSpace(v)), " ")
+		s = strings.ToLower(s)
+		return strings.ReplaceAll(s, "ё", "е")
+	}
+	return norm(fullName) + "|" + norm(groupName)
+}
+
+func backfillAndDeduplicatePlayers(db *gorm.DB) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		var players []domain.Player
+		if err := tx.Preload("Scores").Order("id ASC").Find(&players).Error; err != nil {
+			return err
+		}
+
+		primaryByKey := make(map[string]domain.Player, len(players))
+		bestByPrimaryGame := make(map[uint]map[string]domain.Score)
+
+		for _, p := range players {
+			key := MakePlayerKey(p.FullName, p.GroupName)
+			primary, exists := primaryByKey[key]
+			if !exists {
+				if p.NormalizedKey != key {
+					if err := tx.Model(&p).Update("normalized_key", key).Error; err != nil {
+						return err
+					}
+					p.NormalizedKey = key
+				}
+				primaryByKey[key] = p
+				gameMap := make(map[string]domain.Score, len(p.Scores))
+				for _, sc := range p.Scores {
+					gameMap[sc.GameID] = sc
+				}
+				bestByPrimaryGame[p.ID] = gameMap
+				continue
+			}
+
+			// Merge duplicate player's bonus and game high scores into the primary record.
+			if p.BonusScore > primary.BonusScore {
+				if err := tx.Model(&primary).Update("bonus_score", p.BonusScore).Error; err != nil {
+					return err
+				}
+				primary.BonusScore = p.BonusScore
+				primaryByKey[key] = primary
+			}
+
+			primaryScores := bestByPrimaryGame[primary.ID]
+			for _, dupScore := range p.Scores {
+				cur, has := primaryScores[dupScore.GameID]
+				if !has {
+					err := tx.Create(&domain.Score{
+						PlayerID:   primary.ID,
+						GameID:     dupScore.GameID,
+						BestScore:  dupScore.BestScore,
+						PlaysCount: dupScore.PlaysCount,
+					}).Error
+					if err != nil {
+						return err
+					}
+					primaryScores[dupScore.GameID] = dupScore
+				} else {
+					newBest := max(cur.BestScore, dupScore.BestScore)
+					newPlays := cur.PlaysCount + dupScore.PlaysCount
+					if err := tx.Model(&domain.Score{}).
+						Where("player_id = ? AND game_id = ?", primary.ID, dupScore.GameID).
+						Updates(map[string]any{"best_score": newBest, "plays_count": newPlays}).Error; err != nil {
+						return err
+					}
+					cur.BestScore = newBest
+					cur.PlaysCount = newPlays
+					primaryScores[dupScore.GameID] = cur
+				}
+			}
+
+			if err := tx.Where("player_id = ?", p.ID).Delete(&domain.Score{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&domain.Player{}, p.ID).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// FindOrCreatePlayer looks up a player case-insensitively (Unicode-safe) by full name and group, creating one if absent.
 func (s *Store) FindOrCreatePlayer(ctx context.Context, fullName, groupName string) (domain.Player, error) {
+	key := MakePlayerKey(fullName, groupName)
 	var player domain.Player
 	err := s.db.WithContext(ctx).
-		Where("LOWER(full_name) = ? AND LOWER(group_name) = ?", strings.ToLower(fullName), strings.ToLower(groupName)).
+		Where("normalized_key = ?", key).
 		First(&player).Error
 	if err == nil {
 		return player, nil
@@ -89,10 +183,15 @@ func (s *Store) FindOrCreatePlayer(ctx context.Context, fullName, groupName stri
 	}
 
 	player = domain.Player{
-		FullName:  fullName,
-		GroupName: groupName,
+		FullName:      fullName,
+		GroupName:     groupName,
+		NormalizedKey: key,
 	}
 	if err := s.db.WithContext(ctx).Create(&player).Error; err != nil {
+		// Handle concurrent creation race by re-fetching the winner row.
+		if retryErr := s.db.WithContext(ctx).Where("normalized_key = ?", key).First(&player).Error; retryErr == nil {
+			return player, nil
+		}
 		return domain.Player{}, err
 	}
 	return player, nil

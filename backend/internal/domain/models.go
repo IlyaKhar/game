@@ -22,13 +22,14 @@ var ValidGames = map[string]bool{
 
 // Player represents a festival participant identified by full name and group.
 type Player struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	FullName   string    `gorm:"size:120;not null;index" json:"full_name"`
-	GroupName  string    `gorm:"size:40;not null;index" json:"group_name"`
-	BonusScore int       `gorm:"not null;default:0" json:"bonus_score"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	Scores     []Score   `gorm:"foreignKey:PlayerID;constraint:OnDelete:CASCADE" json:"-"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	FullName      string    `gorm:"size:120;not null;index" json:"full_name"`
+	GroupName     string    `gorm:"size:40;not null;index" json:"group_name"`
+	NormalizedKey string    `gorm:"size:180;index" json:"-"`
+	BonusScore    int       `gorm:"not null;default:0" json:"bonus_score"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Scores        []Score   `gorm:"foreignKey:PlayerID;constraint:OnDelete:CASCADE" json:"-"`
 }
 
 // Score stores a player's best score and play count for one game.

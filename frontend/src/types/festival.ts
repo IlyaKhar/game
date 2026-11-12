@@ -65,9 +65,9 @@ export const FESTIVAL_GAMES: GameMeta[] = [
   },
   {
     id: 'block',
-    title: 'BLOCK BLAST',
-    subtitle: 'Комбо-головоломка 8×8',
-    controls: 'Перетаскивай фигуры на поле и сжигай линии',
+    title: 'BLOCK BLAST 3D',
+    subtitle: '3D-головоломка 8×8',
+    controls: 'Перетаскивай 3D-фигуры на поле 8×8 (или тап по фигуре → клетка)',
     variant: 'blue',
   },
   {

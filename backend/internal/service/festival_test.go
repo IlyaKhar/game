@@ -43,6 +43,18 @@ func TestFestivalFlowAndAdminBoost(t *testing.T) {
 		t.Fatalf("expected best score 350 to persist, got %+v", p1)
 	}
 
+	// Re-entering with different Cyrillic casing must resume the SAME player without duplicating
+	_, p1Again, err := svc.Enter(ctx, domain.EnterRequest{
+		FullName:  "иванов иван",
+		GroupName: "ИСП-31",
+	})
+	if err != nil {
+		t.Fatalf("Re-enter failed: %v", err)
+	}
+	if p1Again.ID != p1.ID || p1Again.Games.Dino != 350 {
+		t.Fatalf("expected same player ID %d with 350 dino score, got ID %d score %d", p1.ID, p1Again.ID, p1Again.Games.Dino)
+	}
+
 	// Admin boost
 	bonus := 500
 	gd := 999
