@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw, Trophy } from 'lucide-react';
 import { sfx } from '../lib/sound';
 
@@ -8,84 +9,238 @@ interface SnakeGameProps {
   isNewRecord: boolean;
 }
 
-type Dir = { x: number; y: number };
+const GRID_SIZE = 18;
+const CELL_SIZE = 1.0;
+const HALF_GRID = (GRID_SIZE * CELL_SIZE) / 2;
 
-export const SnakeGame: React.FC<SnakeGameProps> = ({ onGameOver, bestScore, isNewRecord }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export const SnakeGame: React.FC<SnakeGameProps> = ({
+  onGameOver,
+  bestScore,
+  isNewRecord,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scoreBadgeRef = useRef<HTMLSpanElement>(null);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [sessionId, setSessionId] = useState(0);
-  const dirQueueRef = useRef<Dir[]>([]);
-  const currentDirRef = useRef<Dir>({ x: 1, y: 0 });
+
   const onGameOverRef = useRef(onGameOver);
   onGameOverRef.current = onGameOver;
 
-  const enqueueDir = (next: Dir) => {
-    const q = dirQueueRef.current;
-    const last = q.length > 0 ? q[q.length - 1]! : currentDirRef.current;
-    if (last.x + next.x === 0 && last.y + next.y === 0) return;
-    if (last.x === next.x && last.y === next.y) return;
-    if (q.length < 3) q.push(next);
-  };
+  const handleInputRef = useRef<(x: number, z: number) => void>(() => {});
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const COLS = 20;
-    const ROWS = 16;
-    const CELL = 32;
-    const W = COLS * CELL;
-    const H = ROWS * CELL;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // --- THREE.JS SETUP (PORTED EXACTLY FROM 60FPS PROTOTYPE) ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0e111a);
 
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    camera.position.set(0, 22, 18);
+    camera.lookAt(0, 0, 1.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
+    container.appendChild(renderer.domElement);
+
+    function onResize() {
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const w = Math.max(rect.width, 320);
+      const h = Math.max(rect.height, 220);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    }
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    // --- LIGHTING ---
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.95);
+    scene.add(ambLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    dirLight.position.set(10, 25, 12);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+
+    const foodLight = new THREE.PointLight(0xccff00, 2.5, 6);
+    scene.add(foodLight);
+
+    // --- 3D ARENA PLATFORM ---
+    const floorGeo = new THREE.BoxGeometry(GRID_SIZE * CELL_SIZE + 0.6, 0.6, GRID_SIZE * CELL_SIZE + 0.6);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x1e2438,
+      roughness: 0.7,
+      metalness: 0.2,
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.y = -0.3;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    // Grid lines
+    const gridHelper = new THREE.GridHelper(GRID_SIZE * CELL_SIZE, GRID_SIZE, 0x64748b, 0x334155);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // Arena Outer Border
+    const borderMat = new THREE.MeshStandardMaterial({ color: 0x242838, metalness: 0.5, roughness: 0.5 });
+    const bW = GRID_SIZE * CELL_SIZE + 0.8;
+    const bT = 0.25;
+    const bH = 0.5;
+
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, bT), borderMat);
+    b1.position.set(0, bH / 2, -HALF_GRID - bT / 2);
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, bT), borderMat);
+    b2.position.set(0, bH / 2, HALF_GRID + bT / 2);
+    const b3 = new THREE.Mesh(new THREE.BoxGeometry(bT, bH, bW), borderMat);
+    b3.position.set(-HALF_GRID - bT / 2, bH / 2, 0);
+    const b4 = new THREE.Mesh(new THREE.BoxGeometry(bT, bH, bW), borderMat);
+    b4.position.set(HALF_GRID + bT / 2, bH / 2, 0);
+    scene.add(b1, b2, b3, b4);
+
+    // --- REUSABLE MESHES & MATERIALS ---
+    const headGeo = new THREE.BoxGeometry(0.88, 0.75, 0.88);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.1 });
+
+    const eyeGeo = new THREE.SphereGeometry(0.12, 12, 12);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+
+    const bodyGeo = new THREE.BoxGeometry(0.8, 0.65, 0.8);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xccff00, roughness: 0.35, metalness: 0.2 });
+
+    const foodGeo = new THREE.OctahedronGeometry(0.42, 0);
+    const foodMat = new THREE.MeshStandardMaterial({
+      color: 0xccff00,
+      emissive: 0x88bb00,
+      emissiveIntensity: 0.6,
+      roughness: 0.1,
+      metalness: 0.4,
+    });
+    const foodMesh = new THREE.Mesh(foodGeo, foodMat);
+    foodMesh.castShadow = true;
+    scene.add(foodMesh);
+
+    // --- GAME STATE ---
     let snake = [
-      { x: 6, y: 8 },
-      { x: 5, y: 8 },
-      { x: 4, y: 8 },
+      { x: 6, z: 9 },
+      { x: 5, z: 9 },
+      { x: 4, z: 9 },
+      { x: 3, z: 9 },
     ];
-    currentDirRef.current = { x: 1, y: 0 };
-    dirQueueRef.current = [];
+    let snakeMeshes: THREE.Object3D[] = [];
+    let dir = { x: 1, z: 0 };
+    let nextDir = { x: 1, z: 0 };
+    let food = { x: 4, z: 0 };
+    let currentScore = 0;
+    let isGameOver = false;
+    let lastStepTime = 0;
+    let stepSpeed = 120;
+    let particles: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[] = [];
 
-    const spawnFood = (occupied: { x: number; y: number }[]) => {
+    function gridToWorld(gx: number, gz: number) {
+      return {
+        x: (gx - GRID_SIZE / 2 + 0.5) * CELL_SIZE,
+        z: (gz - GRID_SIZE / 2 + 0.5) * CELL_SIZE,
+      };
+    }
+
+    function createSnakeSegmentMesh(isHead: boolean) {
+      if (isHead) {
+        const group = new THREE.Group();
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.castShadow = true;
+        head.position.y = 0.38;
+        group.add(head);
+
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(0.24, 0.55, 0.4);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(-0.24, 0.55, 0.4);
+        group.add(eyeL, eyeR);
+        scene.add(group);
+        return group;
+      } else {
+        const mesh = new THREE.Mesh(bodyGeo, bodyMat);
+        mesh.castShadow = true;
+        mesh.position.y = 0.33;
+        scene.add(mesh);
+        return mesh;
+      }
+    }
+
+    function spawnFood() {
       let fx = 0;
-      let fy = 0;
+      let fz = 0;
+      let safe = false;
       let tries = 0;
       do {
-        fx = Math.floor(Math.random() * COLS);
-        fy = Math.floor(Math.random() * ROWS);
+        fx = Math.floor(Math.random() * GRID_SIZE);
+        fz = Math.floor(Math.random() * GRID_SIZE);
+        safe = !snake.some((s) => s.x === fx && s.z === fz);
         tries++;
-      } while (occupied.some((s) => s.x === fx && s.y === fy) && tries < 200);
-      return { x: fx, y: fy, golden: Math.random() < 0.18 };
-    };
+      } while (!safe && tries < 300);
 
-    let food = spawnFood(snake);
-    let currentScore = 0;
-    let dead = false;
-    let stepMs = 128;
-    let lastStep = performance.now();
+      food = { x: fx, z: fz };
+      const pos = gridToWorld(fx, fz);
+      foodMesh.position.set(pos.x, 0.5, pos.z);
+      foodLight.position.set(pos.x, 1.2, pos.z);
+    }
+
+    function create3DParticles(x: number, z: number, count = 22) {
+      const pGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0xccff00 });
+
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(pGeo, pMat);
+        p.position.set(x, 0.5, z);
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 4 + 2;
+        scene.add(p);
+        particles.push({
+          mesh: p,
+          vx: Math.cos(ang) * spd,
+          vy: Math.random() * 5 + 3,
+          vz: Math.sin(ang) * spd,
+          life: 1.0,
+        });
+      }
+    }
+
+    function handleInput(x: number, z: number) {
+      if (dir.x + x === 0 && dir.z + z === 0) return;
+      nextDir = { x, z };
+    }
+    handleInputRef.current = handleInput;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+      if (['ArrowUp', 'KeyW'].includes(e.code)) {
+        handleInput(0, -1);
         e.preventDefault();
-        enqueueDir({ x: 0, y: -1 });
-      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      } else if (['ArrowDown', 'KeyS'].includes(e.code)) {
+        handleInput(0, 1);
         e.preventDefault();
-        enqueueDir({ x: 0, y: 1 });
-      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      } else if (['ArrowLeft', 'KeyA'].includes(e.code)) {
+        handleInput(-1, 0);
         e.preventDefault();
-        enqueueDir({ x: -1, y: 0 });
-      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      } else if (['ArrowRight', 'KeyD'].includes(e.code)) {
+        handleInput(1, 0);
         e.preventDefault();
-        enqueueDir({ x: 1, y: 0 });
       }
     };
+    window.addEventListener('keydown', onKeyDown);
 
+    // Touch Swipes
     let touchStart: { x: number; y: number } | null = null;
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
@@ -97,192 +252,270 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({ onGameOver, bestScore, isN
       const dx = t.clientX - touchStart.x;
       const dy = t.clientY - touchStart.y;
       if (Math.abs(dx) > Math.abs(dy)) {
-        if (Math.abs(dx) > 20) enqueueDir(dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 });
-      } else if (Math.abs(dy) > 20) {
-        enqueueDir(dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 });
+        if (Math.abs(dx) > 20) handleInput(dx > 0 ? 1 : -1, 0);
+      } else {
+        if (Math.abs(dy) > 20) handleInput(0, dy > 0 ? 1 : -1);
       }
       touchStart = null;
     };
+    const domEl = renderer.domElement;
+    domEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    domEl.addEventListener('touchend', onTouchEnd, { passive: true });
 
-    window.addEventListener('keydown', onKeyDown);
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+    function initGame() {
+      snakeMeshes.forEach((m) => scene.remove(m));
+      snakeMeshes = [];
 
+      snake = [
+        { x: 6, z: 9 },
+        { x: 5, z: 9 },
+        { x: 4, z: 9 },
+        { x: 3, z: 9 },
+      ];
+
+      dir = { x: 1, z: 0 };
+      nextDir = { x: 1, z: 0 };
+      currentScore = 0;
+      stepSpeed = 120;
+      isGameOver = false;
+
+      if (scoreBadgeRef.current) {
+        scoreBadgeRef.current.innerText = '0';
+      }
+
+      snake.forEach((s, idx) => {
+        const mesh = createSnakeSegmentMesh(idx === 0);
+        const pos = gridToWorld(s.x, s.z);
+        mesh.position.x = pos.x;
+        mesh.position.z = pos.z;
+        snakeMeshes.push(mesh);
+      });
+
+      spawnFood();
+    }
+    initGame();
+
+    function step() {
+      dir = { ...nextDir };
+      const head = { x: snake[0]!.x + dir.x, z: snake[0]!.z + dir.z };
+
+      // Wall or Self Collision
+      if (
+        head.x < 0 ||
+        head.x >= GRID_SIZE ||
+        head.z < 0 ||
+        head.z >= GRID_SIZE ||
+        snake.some((s) => s.x === head.x && s.z === head.z)
+      ) {
+        isGameOver = true;
+        sfx.hit();
+        const pos = gridToWorld(snake[0]!.x, snake[0]!.z);
+        create3DParticles(pos.x, pos.z, 35);
+        setScore(currentScore);
+        setGameOver(true);
+        onGameOverRef.current(currentScore);
+        return;
+      }
+
+      snake.unshift(head);
+
+      // Eat Food
+      if (head.x === food.x && head.z === food.z) {
+        currentScore += 15;
+        sfx.coin();
+        if (scoreBadgeRef.current) {
+          scoreBadgeRef.current.innerText = String(currentScore);
+        }
+        const pos = gridToWorld(food.x, food.z);
+        create3DParticles(pos.x, pos.z, 22);
+
+        // Add body segment mesh
+        const newMesh = createSnakeSegmentMesh(false);
+        snakeMeshes.push(newMesh);
+
+        stepSpeed = Math.max(70, stepSpeed - 1.5);
+        spawnFood();
+      } else {
+        snake.pop();
+      }
+
+      // Update Mesh Positions & Rotate Head to Direction
+      snake.forEach((s, idx) => {
+        const mesh = snakeMeshes[idx];
+        if (!mesh) return;
+        const pos = gridToWorld(s.x, s.z);
+        mesh.position.x = pos.x;
+        mesh.position.z = pos.z;
+
+        if (idx === 0) {
+          const angle = Math.atan2(dir.x, dir.z);
+          mesh.rotation.y = angle;
+        }
+      });
+    }
+
+    let clock = new THREE.Clock();
     let rafId = 0;
-    const loop = (now: number) => {
-      if (!dead && now - lastStep >= stepMs) {
-        lastStep = now;
-        const queued = dirQueueRef.current.shift();
-        if (queued) currentDirRef.current = queued;
-        const d = currentDirRef.current;
 
-        const head = snake[0]!;
-        const nx = head.x + d.x;
-        const ny = head.y + d.y;
+    function animate() {
+      rafId = requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
 
-        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS || snake.some((s) => s.x === nx && s.y === ny)) {
-          dead = true;
-          sfx.hit();
-          setGameOver(true);
-          onGameOverRef.current(currentScore);
-        } else {
-          const newHead = { x: nx, y: ny };
-          snake = [newHead, ...snake];
-          if (nx === food.x && ny === food.y) {
-            currentScore += food.golden ? 50 : 15;
-            setScore(currentScore);
-            sfx.coin();
-            stepMs = Math.max(72, stepMs - 2);
-            food = spawnFood(snake);
-          } else {
-            snake.pop();
-          }
+      if (!isGameOver && performance.now() - lastStepTime > stepSpeed) {
+        step();
+        lastStepTime = performance.now();
+      }
+
+      // Food Animation: Floating bounce + Spin
+      if (foodMesh) {
+        foodMesh.rotation.y += 1.8 * delta;
+        foodMesh.rotation.x += 1.2 * delta;
+        foodMesh.position.y = 0.5 + Math.sin(time * 4) * 0.12;
+      }
+
+      // Particles Physics
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i]!;
+        p.mesh.position.x += p.vx * delta;
+        p.mesh.position.y += p.vy * delta;
+        p.mesh.position.z += p.vz * delta;
+        p.vy -= 9.8 * delta;
+        p.life -= 1.8 * delta;
+        p.mesh.scale.setScalar(Math.max(0.01, p.life));
+
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          p.mesh.geometry.dispose();
+          particles.splice(i, 1);
         }
       }
 
-      // Draw Arena
-      ctx.fillStyle = '#0d102b';
-      ctx.fillRect(0, 0, W, H);
+      // Subtle dynamic camera float
+      camera.position.x = Math.sin(time * 0.4) * 0.6;
+      camera.lookAt(0, 0, 1.2);
 
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x <= COLS; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x * CELL, 0);
-        ctx.lineTo(x * CELL, H);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= ROWS; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * CELL);
-        ctx.lineTo(W, y * CELL);
-        ctx.stroke();
-      }
+      renderer.render(scene, camera);
+    }
+    animate();
 
-      // Apple
-      const fx = food.x * CELL + CELL / 2;
-      const fy = food.y * CELL + CELL / 2;
-      ctx.fillStyle = food.golden ? '#fde047' : '#ef4444';
-      ctx.beginPath();
-      ctx.arc(fx, fy, 11 + Math.sin(now * 0.008) * 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(fx - 2, fy - 15, 4, 6);
-
-      // Snake
-      for (let i = snake.length - 1; i >= 0; i--) {
-        const seg = snake[i]!;
-        const t = i / Math.max(1, snake.length - 1);
-        ctx.fillStyle = i === 0 ? '#38bdf8' : t < 0.5 ? '#818cf8' : '#ec4899';
-        ctx.beginPath();
-        ctx.roundRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4, 8);
-        ctx.fill();
-
-        if (i === 0) {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(seg.x * CELL + 11, seg.y * CELL + 11, 3.2, 0, Math.PI * 2);
-          ctx.arc(seg.x * CELL + 21, seg.y * CELL + 11, 3.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#09090b';
-          ctx.beginPath();
-          ctx.arc(seg.x * CELL + 11, seg.y * CELL + 11, 1.6, 0, Math.PI * 2);
-          ctx.arc(seg.x * CELL + 21, seg.y * CELL + 11, 1.6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      rafId = requestAnimationFrame(loop);
-    };
-
-    rafId = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('keydown', onKeyDown);
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('resize', onResize);
+      domEl.removeEventListener('touchstart', onTouchStart);
+      domEl.removeEventListener('touchend', onTouchEnd);
+
+      snakeMeshes.forEach((m) => scene.remove(m));
+      particles.forEach((p) => {
+        scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+      });
+      renderer.dispose();
+      if (domEl.parentNode) {
+        domEl.parentNode.removeChild(domEl);
+      }
     };
   }, [sessionId]);
 
   const restart = () => {
-    setGameOver(false);
     setScore(0);
+    setGameOver(false);
     setSessionId((s) => s + 1);
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4">
-      <div className="mb-2 flex w-full max-w-[640px] items-center justify-between">
-        <span className="text-xs text-indigo-200">Красные яблоки: +15 • Золотые: +50</span>
-        <span className="font-display text-xl font-black italic text-amber-300 tabular-nums">{score}</span>
-      </div>
+    <div className="relative flex h-full w-full flex-col">
+      {/* 3D WebGL Canvas */}
+      <div
+        ref={containerRef}
+        className="relative aspect-[4/3] w-full flex-1 overflow-hidden rounded-2xl border border-white/15 bg-[#0e111a] shadow-2xl sm:aspect-[16/10]"
+      >
+        {/* Live Score Badge (Direct DOM update - zero re-renders/zero lag) */}
+        <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-xl border border-white/10 bg-[#0e111ce0] px-3.5 py-1.5 backdrop-blur-md">
+          <div className="h-2 w-2 rounded-full bg-[#ccff00] animate-pulse" />
+          <span className="font-display text-xs font-bold tracking-wider text-white/50 uppercase">
+            СЧЁТ:
+          </span>
+          <span
+            ref={scoreBadgeRef}
+            className="font-display text-base font-black italic text-[#ccff00] tabular-nums"
+          >
+            0
+          </span>
+        </div>
 
-      <div className="relative w-full max-w-[640px] overflow-hidden rounded-2xl border-2 border-indigo-400/60 shadow-[0_0_24px_rgba(99,102,241,0.45)]">
-        <canvas ref={canvasRef} className="block aspect-[20/16] w-full touch-none select-none" />
-
+        {/* Game Over Screen */}
         {gameOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0c0622]/85 p-6 text-center backdrop-blur-sm">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#090b14]/90 p-4 text-center backdrop-blur-md">
+            <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-500/40 bg-rose-500/20 text-2xl font-black text-rose-400">
+              ✕
+            </div>
+            <h2 className="font-display mb-1 text-2xl font-black italic tracking-wide text-white uppercase sm:text-3xl">
+              СТОЛКНОВЕНИЕ
+            </h2>
+            <p className="mb-1 text-sm text-fuchsia-200/80">
+              Набрано очков:{' '}
+              <span className="font-bold text-[#ccff00]">{score.toLocaleString('ru-RU')}</span>
+            </p>
+            <p className="mb-2 text-xs text-white/50">
+              Рекорд: <span className="font-bold text-amber-300">{bestScore.toLocaleString('ru-RU')}</span>
+            </p>
             {isNewRecord && (
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-400/25 px-3 py-1 text-xs font-black text-amber-300 uppercase">
-                <Trophy className="h-4 w-4" aria-hidden="true" />
-                Новый рекорд!
+              <div className="mb-4 flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1 text-xs font-black italic text-amber-300">
+                <Trophy className="h-3.5 w-3.5" />
+                НОВЫЙ РЕКОРД!
               </div>
             )}
-            <h2 className="font-display text-3xl font-black italic text-white uppercase">Игра окончена</h2>
-            <p className="mt-1 text-sm text-indigo-200">
-              Итого: <span className="font-display text-lg font-black text-amber-300">{score}</span> (Лучший:{' '}
-              {Math.max(bestScore, score)})
-            </p>
             <button
               type="button"
               onClick={restart}
-              className="font-display mt-5 flex min-h-[46px] items-center gap-2 rounded-full bg-gradient-to-r from-[#6366f1] to-[#ec4899] px-6 py-2.5 text-sm font-black italic text-white uppercase"
+              className="mt-2 flex items-center gap-2 rounded-full bg-[#ccff00] px-8 py-3 font-display text-xs font-black italic tracking-wider text-black uppercase shadow-[0_0_25px_rgba(204,255,0,0.5)] transition hover:bg-[#b8e600] active:scale-95 cursor-pointer"
             >
-              <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              Играть снова
+              <RotateCcw className="h-4 w-4" />
+              ИГРАТЬ СНОВА
             </button>
           </div>
         )}
       </div>
 
-      {/* Touch D-Pad for Mobile */}
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:hidden">
-        <div />
+      {/* Mobile Virtual D-Pad */}
+      <div className="mt-3 flex flex-col items-center gap-1.5 sm:hidden">
         <button
           type="button"
+          onClick={() => handleInputRef.current(0, -1)}
           aria-label="Вверх"
-          onClick={() => enqueueDir({ x: 0, y: -1 })}
-          className="flex h-12 w-14 items-center justify-center rounded-xl border border-indigo-400/50 bg-[#1c0b3d] active:bg-indigo-600"
+          className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
         >
           <ArrowUp className="h-5 w-5" />
         </button>
-        <div />
-        <button
-          type="button"
-          aria-label="Влево"
-          onClick={() => enqueueDir({ x: -1, y: 0 })}
-          className="flex h-12 w-14 items-center justify-center rounded-xl border border-indigo-400/50 bg-[#1c0b3d] active:bg-indigo-600"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Вниз"
-          onClick={() => enqueueDir({ x: 0, y: 1 })}
-          className="flex h-12 w-14 items-center justify-center rounded-xl border border-indigo-400/50 bg-[#1c0b3d] active:bg-indigo-600"
-        >
-          <ArrowDown className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Вправо"
-          onClick={() => enqueueDir({ x: 1, y: 0 })}
-          className="flex h-12 w-14 items-center justify-center rounded-xl border border-indigo-400/50 bg-[#1c0b3d] active:bg-indigo-600"
-        >
-          <ArrowRight className="h-5 w-5" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => handleInputRef.current(-1, 0)}
+            aria-label="Влево"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleInputRef.current(0, 1)}
+            aria-label="Вниз"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+          >
+            <ArrowDown className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleInputRef.current(1, 0)}
+            aria-label="Вправо"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+          >
+            <ArrowRight className="h-5 w-5" />
+          </button>
+        </div>
       </div>
     </div>
   );
 };
-

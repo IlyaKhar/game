@@ -51,9 +51,9 @@ export const FESTIVAL_GAMES: GameMeta[] = [
   },
   {
     id: 'snake',
-    title: 'ЗМЕЙКА',
-    subtitle: 'Синтвейв-арена',
-    controls: 'WASD / Стрелки или свайпы',
+    title: 'ЗМЕЙКА 3D',
+    subtitle: 'Изометрическая 3D-арена',
+    controls: 'WASD / Стрелки / Свайпы • Зажми и крути 3D-камеру',
     variant: 'blue',
   },
   {

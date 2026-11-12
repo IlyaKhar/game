@@ -18,11 +18,41 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
   const [groupName, setGroupName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [nameInvalid, setNameInvalid] = useState(false);
-  const [groupInvalid, setGroupInvalid] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const groupRef = useRef<HTMLInputElement>(null);
+
+  const validateName = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Введите Фамилию и Имя';
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 2 || parts.length > 3) {
+      return 'Введите Фамилию и Имя через пробел';
+    }
+    for (const part of parts) {
+      if (part.length < 2) {
+        return 'Каждое слово в ФИО должно содержать минимум 2 буквы';
+      }
+      if (!/^[а-яёА-ЯЁ\-]+$/.test(part)) {
+        return 'ФИО должно содержать только русские буквы';
+      }
+    }
+    return null;
+  };
+
+  const validateGroup = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Укажите учебную группу';
+    if (trimmed.length < 2 || trimmed.length > 20) {
+      return 'Группа должна быть от 2 до 20 символов';
+    }
+    if (!/^[а-яёА-ЯЁa-zA-Z0-9\-]+$/.test(trimmed)) {
+      return 'Группа может содержать только буквы, цифры и дефис (например: ИСП-21)';
+    }
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,16 +61,16 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
     const trimmedName = fullName.trim();
     const trimmedGroup = groupName.trim();
 
-    const badName = trimmedName.length < 3;
-    const badGroup = trimmedGroup.length < 2;
-    setNameInvalid(badName);
-    setGroupInvalid(badGroup);
+    const errName = validateName(trimmedName);
+    const errGroup = validateGroup(trimmedGroup);
+    setNameError(errName);
+    setGroupError(errGroup);
 
-    if (badName) {
+    if (errName) {
       nameRef.current?.focus();
       return;
     }
-    if (badGroup) {
+    if (errGroup) {
       groupRef.current?.focus();
       return;
     }
@@ -99,32 +129,30 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                 name="full_name"
                 type="text"
                 required
-                minLength={3}
-                maxLength={120}
+                minLength={5}
+                maxLength={80}
                 autoComplete="name"
                 enterKeyHint="next"
                 aria-describedby="fullname-hint"
-                aria-invalid={nameInvalid}
+                aria-invalid={!!nameError}
                 value={fullName}
                 onChange={(e) => {
                   setFullName(e.target.value);
-                  if (nameInvalid && e.target.value.trim().length >= 3) {
-                    setNameInvalid(false);
-                  }
+                  if (nameError) setNameError(null);
                 }}
                 onBlur={() => {
-                  if (fullName.length > 0 && fullName.trim().length < 3) {
-                    setNameInvalid(true);
+                  if (fullName.trim()) {
+                    setNameError(validateName(fullName));
                   }
                 }}
-                placeholder="Фамилия Имя Отчество"
+                placeholder="Фамилия Имя"
                 className={`fest-input w-full rounded-xl border-2 bg-[#230c47]/80 px-4 py-3 text-white placeholder:text-fuchsia-300/40 transition ${
-                  nameInvalid ? 'user-invalid-fallback border-rose-400' : 'border-fuchsia-500/45 focus:border-fuchsia-400'
+                  nameError ? 'user-invalid-fallback border-rose-400' : 'border-fuchsia-500/45 focus:border-fuchsia-400'
                 }`}
               />
-              {nameInvalid && (
+              {nameError && (
                 <div className="fest-error-msg !flex items-center gap-1.5 text-xs font-medium text-rose-300" role="alert">
-                  Введите ФИО полностью (минимум 3 символа).
+                  {nameError}
                 </div>
               )}
             </div>
@@ -148,32 +176,30 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
                 type="text"
                 required
                 minLength={2}
-                maxLength={40}
+                maxLength={20}
                 autoCorrect="off"
                 spellCheck={false}
                 enterKeyHint="done"
                 aria-describedby="group-hint"
-                aria-invalid={groupInvalid}
+                aria-invalid={!!groupError}
                 value={groupName}
                 onChange={(e) => {
                   setGroupName(e.target.value);
-                  if (groupInvalid && e.target.value.trim().length >= 2) {
-                    setGroupInvalid(false);
-                  }
+                  if (groupError) setGroupError(null);
                 }}
                 onBlur={() => {
-                  if (groupName.length > 0 && groupName.trim().length < 2) {
-                    setGroupInvalid(true);
+                  if (groupName.trim()) {
+                    setGroupError(validateGroup(groupName));
                   }
                 }}
                 placeholder="Впиши свою группу"
                 className={`fest-input w-full rounded-xl border-2 bg-[#230c47]/80 px-4 py-3 text-white uppercase placeholder:normal-case placeholder:text-fuchsia-300/40 transition ${
-                  groupInvalid ? 'user-invalid-fallback border-rose-400' : 'border-indigo-400/50 focus:border-indigo-300'
+                  groupError ? 'user-invalid-fallback border-rose-400' : 'border-indigo-400/50 focus:border-indigo-300'
                 }`}
               />
-              {groupInvalid && (
+              {groupError && (
                 <div className="fest-error-msg !flex items-center gap-1.5 text-xs font-medium text-rose-300" role="alert">
-                  Укажите номер группы (минимум 2 символа).
+                  {groupError}
                 </div>
               )}
             </div>
