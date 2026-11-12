@@ -6,12 +6,21 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/golang-jwt/jwt/v5"
 
 	"okei-fest-backend/internal/domain"
 	"okei-fest-backend/internal/repository"
 )
+
+var maxGameScores = map[string]int{
+	"dino":   100_000,
+	"snake":  50_000,
+	"gd":     100_000,
+	"block":  200_000,
+	"subway": 300_000,
+}
 
 // Claims represents signed JWT claims for either a student or an admin.
 type Claims struct {
@@ -46,6 +55,18 @@ func (s *FestivalService) Enter(ctx context.Context, req domain.EnterRequest) (s
 	if len([]rune(fullName)) < 3 || len([]rune(fullName)) > 120 {
 		return "", domain.PlayerSummary{}, fmt.Errorf("%w: ФИО должно содержать от 3 до 120 символов", domain.ErrInvalidInput)
 	}
+
+	parts := strings.Fields(fullName)
+	if len(parts) < 2 {
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: введите фамилию и имя через пробел", domain.ErrInvalidInput)
+	}
+
+	for _, r := range fullName {
+		if !unicode.Is(unicode.Cyrillic, r) && r != ' ' && r != '-' {
+			return "", domain.PlayerSummary{}, fmt.Errorf("%w: ФИО должно содержать только русские буквы", domain.ErrInvalidInput)
+		}
+	}
+
 	if len([]rune(groupName)) < 2 || len([]rune(groupName)) > 40 {
 		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите корректную группу (от 2 символов)", domain.ErrInvalidInput)
 	}
@@ -83,8 +104,13 @@ func (s *FestivalService) SubmitScore(ctx context.Context, playerID uint, req do
 	if !domain.ValidGames[gameID] {
 		return domain.PlayerSummary{}, fmt.Errorf("%w: неизвестная игра", domain.ErrInvalidInput)
 	}
-	if req.Score < 0 || req.Score > 10_000_000 {
-		return domain.PlayerSummary{}, fmt.Errorf("%w: недопустимое количество очков", domain.ErrInvalidInput)
+
+	maxAllowed, ok := maxGameScores[gameID]
+	if !ok {
+		maxAllowed = 100_000
+	}
+	if req.Score < 0 || req.Score > maxAllowed {
+		return domain.PlayerSummary{}, fmt.Errorf("%w: недопустимое количество очков для игры %s", domain.ErrInvalidInput, gameID)
 	}
 
 	if err := s.store.UpsertBestScore(ctx, playerID, gameID, req.Score); err != nil {

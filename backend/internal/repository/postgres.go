@@ -191,16 +191,28 @@ func (s *Store) GetLeaderboard(ctx context.Context) (domain.LeaderboardResponse,
 
 // GetPlayerSummary returns one player's summary including their current leaderboard rank.
 func (s *Store) GetPlayerSummary(ctx context.Context, playerID uint) (domain.PlayerSummary, error) {
-	lb, err := s.GetLeaderboard(ctx)
+	var player domain.Player
+	err := s.db.WithContext(ctx).Preload("Scores").First(&player, playerID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.PlayerSummary{}, domain.ErrNotFound
+		}
+		return domain.PlayerSummary{}, err
+	}
+
+	summary := buildSummary(player)
+
+	var higherCount int64
+	err = s.db.WithContext(ctx).
+		Model(&domain.Player{}).
+		Where("(bonus_score + COALESCE((SELECT SUM(best_score) FROM scores WHERE scores.player_id = players.id), 0)) > ?", summary.TotalScore).
+		Count(&higherCount).Error
 	if err != nil {
 		return domain.PlayerSummary{}, err
 	}
-	for _, p := range lb.Players {
-		if p.ID == playerID {
-			return p, nil
-		}
-	}
-	return domain.PlayerSummary{}, domain.ErrNotFound
+
+	summary.Rank = int(higherCount) + 1
+	return summary, nil
 }
 
 // AdminUpdatePlayer updates a player's profile fields, game scores, and bonus points.
