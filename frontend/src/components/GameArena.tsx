@@ -66,12 +66,9 @@ export const GameArena: React.FC<GameArenaProps> = ({
             В хаб
           </button>
 
-          <div>
-            <h1 className="font-display text-base font-black italic text-white uppercase sm:text-xl">
-              {game.title}
-            </h1>
-            <p className="hidden text-xs text-fuchsia-200/75 sm:block">{game.controls}</p>
-          </div>
+          <h1 className="font-display text-base font-black italic tracking-wide text-white uppercase sm:text-xl">
+            {game.title}
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -126,8 +123,6 @@ export const GameArena: React.FC<GameArenaProps> = ({
           restart,
         })}
       </div>
-
-      <p className="mt-2 text-center text-xs text-fuchsia-200/75 sm:hidden">{game.controls}</p>
     </div>
   );
 };

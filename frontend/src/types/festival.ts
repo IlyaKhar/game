@@ -44,9 +44,9 @@ export interface GameMeta {
 export const FESTIVAL_GAMES: GameMeta[] = [
   {
     id: 'dino',
-    title: 'ДИНОЗАВРИК',
-    subtitle: 'Неоновый забег по пустыне',
-    controls: 'Пробел / ↑ — прыжок (двойной), ↓ — пригнуться / тап по экрану',
+    title: 'ДИНОЗАВРИК 3D',
+    subtitle: 'Неоновый 3D-раннер у колледжа',
+    controls: 'Пробел / ↑ / Тап — прыжок (двойной), ↓ — пригнуться',
     variant: 'pink',
   },
   {

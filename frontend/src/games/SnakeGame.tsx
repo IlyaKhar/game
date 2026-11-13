@@ -35,7 +35,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
 
     // --- THREE.JS SETUP (PORTED EXACTLY FROM 60FPS PROTOTYPE) ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0e111a);
+    scene.background = new THREE.Color(0x0b0e1a);
 
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     camera.position.set(0, 22, 18);
@@ -62,39 +62,47 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
     window.addEventListener('resize', onResize);
     onResize();
 
-    // --- LIGHTING ---
-    const ambLight = new THREE.AmbientLight(0xffffff, 0.95);
+    // --- LIGHTING (BLOCK BLAST SYNTHWAVE PALETTE) ---
+    const ambLight = new THREE.AmbientLight(0xdbeafe, 0.9);
     scene.add(ambLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
     dirLight.position.set(10, 25, 12);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
     scene.add(dirLight);
 
-    const foodLight = new THREE.PointLight(0xccff00, 2.5, 6);
+    const rimPink = new THREE.PointLight(0xff2e93, 2.2, 25);
+    rimPink.position.set(-14, 6, -10);
+    scene.add(rimPink);
+
+    const rimCyan = new THREE.PointLight(0x38bdf8, 2.0, 25);
+    rimCyan.position.set(14, 6, 12);
+    scene.add(rimCyan);
+
+    const foodLight = new THREE.PointLight(0xff2e93, 2.8, 7);
     scene.add(foodLight);
 
     // --- 3D ARENA PLATFORM ---
     const floorGeo = new THREE.BoxGeometry(GRID_SIZE * CELL_SIZE + 0.6, 0.6, GRID_SIZE * CELL_SIZE + 0.6);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x1e2438,
-      roughness: 0.7,
-      metalness: 0.2,
+      color: 0x161336,
+      roughness: 0.65,
+      metalness: 0.25,
     });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.position.y = -0.3;
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    // Grid lines
-    const gridHelper = new THREE.GridHelper(GRID_SIZE * CELL_SIZE, GRID_SIZE, 0x64748b, 0x334155);
+    // Glowing Synthwave Grid lines
+    const gridHelper = new THREE.GridHelper(GRID_SIZE * CELL_SIZE, GRID_SIZE, 0x818cf8, 0x312e81);
     gridHelper.position.y = 0.01;
     scene.add(gridHelper);
 
-    // Arena Outer Border
-    const borderMat = new THREE.MeshStandardMaterial({ color: 0x242838, metalness: 0.5, roughness: 0.5 });
+    // Arena Outer Border with Neon Edges
+    const borderMat = new THREE.MeshStandardMaterial({ color: 0x1e123d, metalness: 0.3, roughness: 0.5 });
     const bW = GRID_SIZE * CELL_SIZE + 0.8;
     const bT = 0.25;
     const bH = 0.5;
@@ -109,26 +117,76 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
     b4.position.set(HALF_GRID + bT / 2, bH / 2, 0);
     scene.add(b1, b2, b3, b4);
 
-    // --- REUSABLE MESHES & MATERIALS ---
+    // Neon Frame Line around arena border
+    const borderEdgeGeo = new THREE.EdgesGeometry(
+      new THREE.BoxGeometry(bW + 0.05, 0.52, bW + 0.05)
+    );
+    const borderEdgeMat = new THREE.LineBasicMaterial({ color: 0xff47b3, transparent: true, opacity: 0.75 });
+    const borderLines = new THREE.LineSegments(borderEdgeGeo, borderEdgeMat);
+    borderLines.position.set(0, bH / 2, 0);
+    scene.add(borderLines);
+
+    // --- REUSABLE MESHES & MATERIALS (BLOCK BLAST PALETTE: CYAN, PURPLE & MAGENTA) ---
     const headGeo = new THREE.BoxGeometry(0.88, 0.75, 0.88);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.1 });
-
-    const eyeGeo = new THREE.SphereGeometry(0.12, 12, 12);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
-
-    const bodyGeo = new THREE.BoxGeometry(0.8, 0.65, 0.8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xccff00, roughness: 0.35, metalness: 0.2 });
-
-    const foodGeo = new THREE.OctahedronGeometry(0.42, 0);
-    const foodMat = new THREE.MeshStandardMaterial({
-      color: 0xccff00,
-      emissive: 0x88bb00,
-      emissiveIntensity: 0.6,
-      roughness: 0.1,
-      metalness: 0.4,
+    const headMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.2,
+      metalness: 0.15,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.45,
     });
-    const foodMesh = new THREE.Mesh(foodGeo, foodMat);
-    foodMesh.castShadow = true;
+
+    const eyeWhiteGeo = new THREE.SphereGeometry(0.13, 12, 12);
+    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const eyePupilGeo = new THREE.SphereGeometry(0.08, 10, 10);
+    const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
+
+    const bodyGeo = new THREE.BoxGeometry(0.82, 0.68, 0.82);
+    const bodyMatCyan = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.25,
+      metalness: 0.15,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.35,
+    });
+    const bodyMatPurple = new THREE.MeshStandardMaterial({
+      color: 0xa855f7,
+      roughness: 0.25,
+      metalness: 0.15,
+      emissive: 0x6b21a8,
+      emissiveIntensity: 0.35,
+    });
+    const bodyMatPink = new THREE.MeshStandardMaterial({
+      color: 0xff2e93,
+      roughness: 0.25,
+      metalness: 0.15,
+      emissive: 0xbe185d,
+      emissiveIntensity: 0.35,
+    });
+    const bodyMaterials = [bodyMatCyan, bodyMatPurple, bodyMatPink];
+
+    // Neon Apple Food
+    const foodGroup = new THREE.Group();
+    const foodGeo = new THREE.SphereGeometry(0.42, 16, 16);
+    const foodMat = new THREE.MeshStandardMaterial({
+      color: 0xff2e93,
+      emissive: 0xdb2777,
+      emissiveIntensity: 0.85,
+      roughness: 0.15,
+      metalness: 0.2,
+    });
+    const foodBody = new THREE.Mesh(foodGeo, foodMat);
+    foodBody.castShadow = true;
+    foodGroup.add(foodBody);
+
+    const leafGeo = new THREE.BoxGeometry(0.12, 0.16, 0.08);
+    const leafMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    leaf.position.set(0.1, 0.42, 0);
+    leaf.rotation.z = -0.35;
+    foodGroup.add(leaf);
+
+    const foodMesh = foodGroup;
     scene.add(foodMesh);
 
     // --- GAME STATE ---
@@ -155,7 +213,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
       };
     }
 
-    function createSnakeSegmentMesh(isHead: boolean) {
+    function createSnakeSegmentMesh(isHead: boolean, segIdx = 0) {
       if (isHead) {
         const group = new THREE.Group();
         const head = new THREE.Mesh(headGeo, headMat);
@@ -163,17 +221,27 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
         head.position.y = 0.38;
         group.add(head);
 
-        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(0.24, 0.55, 0.4);
-        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(-0.24, 0.55, 0.4);
+        // White eye base
+        const eyeL = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+        eyeL.position.set(0.24, 0.52, 0.38);
+        const eyeR = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+        eyeR.position.set(-0.24, 0.52, 0.38);
         group.add(eyeL, eyeR);
+
+        // Dark pupil
+        const pupilL = new THREE.Mesh(eyePupilGeo, eyePupilMat);
+        pupilL.position.set(0.24, 0.52, 0.48);
+        const pupilR = new THREE.Mesh(eyePupilGeo, eyePupilMat);
+        pupilR.position.set(-0.24, 0.52, 0.48);
+        group.add(pupilL, pupilR);
+
         scene.add(group);
         return group;
       } else {
-        const mesh = new THREE.Mesh(bodyGeo, bodyMat);
+        const mat = bodyMaterials[segIdx % bodyMaterials.length]!;
+        const mesh = new THREE.Mesh(bodyGeo, mat);
         mesh.castShadow = true;
-        mesh.position.y = 0.33;
+        mesh.position.y = 0.34;
         scene.add(mesh);
         return mesh;
       }
@@ -197,11 +265,13 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
       foodLight.position.set(pos.x, 1.2, pos.z);
     }
 
+    const particleColors = [0x38bdf8, 0xff2e93, 0xa855f7, 0xfde047];
     function create3DParticles(x: number, z: number, count = 22) {
       const pGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
-      const pMat = new THREE.MeshBasicMaterial({ color: 0xccff00 });
 
       for (let i = 0; i < count; i++) {
+        const clr = particleColors[i % particleColors.length]!;
+        const pMat = new THREE.MeshBasicMaterial({ color: clr });
         const p = new THREE.Mesh(pGeo, pMat);
         p.position.set(x, 0.5, z);
         const ang = Math.random() * Math.PI * 2;
@@ -284,7 +354,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
       }
 
       snake.forEach((s, idx) => {
-        const mesh = createSnakeSegmentMesh(idx === 0);
+        const mesh = createSnakeSegmentMesh(idx === 0, idx);
         const pos = gridToWorld(s.x, s.z);
         mesh.position.x = pos.x;
         mesh.position.z = pos.z;
@@ -329,8 +399,8 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
         const pos = gridToWorld(food.x, food.z);
         create3DParticles(pos.x, pos.z, 22);
 
-        // Add body segment mesh
-        const newMesh = createSnakeSegmentMesh(false);
+        // Add body segment mesh with alternating synthwave color
+        const newMesh = createSnakeSegmentMesh(false, snakeMeshes.length);
         snakeMeshes.push(newMesh);
 
         stepSpeed = Math.max(70, stepSpeed - 1.5);
@@ -429,17 +499,17 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
       {/* 3D WebGL Canvas */}
       <div
         ref={containerRef}
-        className="relative aspect-[4/3] w-full flex-1 overflow-hidden rounded-2xl border border-white/15 bg-[#0e111a] shadow-2xl sm:aspect-[16/10]"
+        className="relative aspect-[4/3] w-full flex-1 overflow-hidden rounded-2xl border border-indigo-400/35 bg-[#0b0e1a] shadow-[0_0_32px_rgba(99,102,241,0.28)] sm:aspect-[16/10]"
       >
         {/* Live Score Badge (Direct DOM update - zero re-renders/zero lag) */}
         <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-xl border border-white/10 bg-[#0e111ce0] px-3.5 py-1.5 backdrop-blur-md">
-          <div className="h-2 w-2 rounded-full bg-[#ccff00] animate-pulse" />
-          <span className="font-display text-xs font-bold tracking-wider text-white/50 uppercase">
+          <div className="h-2 w-2 rounded-full bg-[#38bdf8] animate-pulse" />
+          <span className="font-display text-xs font-bold tracking-wider text-white/55 uppercase">
             СЧЁТ:
           </span>
           <span
             ref={scoreBadgeRef}
-            className="font-display text-base font-black italic text-[#ccff00] tabular-nums"
+            className="font-display text-base font-black italic text-amber-300 tabular-nums"
           >
             0
           </span>
@@ -447,7 +517,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
 
         {/* Game Over Screen */}
         {gameOver && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#090b14]/90 p-4 text-center backdrop-blur-md">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#090b14]/90 p-5 text-center backdrop-blur-md">
             <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-500/40 bg-rose-500/20 text-2xl font-black text-rose-400">
               ✕
             </div>
@@ -456,13 +526,13 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             </h2>
             <p className="mb-1 text-sm text-fuchsia-200/80">
               Набрано очков:{' '}
-              <span className="font-bold text-[#ccff00]">{score.toLocaleString('ru-RU')}</span>
+              <span className="font-bold text-amber-300">{score.toLocaleString('ru-RU')}</span>
             </p>
             <p className="mb-2 text-xs text-white/50">
               Рекорд: <span className="font-bold text-amber-300">{bestScore.toLocaleString('ru-RU')}</span>
             </p>
             {isNewRecord && (
-              <div className="mb-4 flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1 text-xs font-black italic text-amber-300">
+              <div className="mb-4 flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3.5 py-1 text-xs font-black italic text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.45)]">
                 <Trophy className="h-3.5 w-3.5" />
                 НОВЫЙ РЕКОРД!
               </div>
@@ -470,7 +540,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             <button
               type="button"
               onClick={restart}
-              className="mt-2 flex items-center gap-2 rounded-full bg-[#ccff00] px-8 py-3 font-display text-xs font-black italic tracking-wider text-black uppercase shadow-[0_0_25px_rgba(204,255,0,0.5)] transition hover:bg-[#b8e600] active:scale-95 cursor-pointer"
+              className="mt-2 flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff2e93] via-[#d946ef] to-[#7c3aed] px-8 py-3 font-display text-xs font-black italic tracking-wider text-white uppercase shadow-[0_0_26px_rgba(255,46,147,0.65)] transition hover:brightness-110 active:scale-95 cursor-pointer"
             >
               <RotateCcw className="h-4 w-4" />
               ИГРАТЬ СНОВА
@@ -485,7 +555,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
           type="button"
           onClick={() => handleInputRef.current(0, -1)}
           aria-label="Вверх"
-          className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+          className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
         >
           <ArrowUp className="h-5 w-5" />
         </button>
@@ -494,7 +564,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             type="button"
             onClick={() => handleInputRef.current(-1, 0)}
             aria-label="Влево"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -502,7 +572,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             type="button"
             onClick={() => handleInputRef.current(0, 1)}
             aria-label="Вниз"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
           >
             <ArrowDown className="h-5 w-5" />
           </button>
@@ -510,7 +580,7 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             type="button"
             onClick={() => handleInputRef.current(1, 0)}
             aria-label="Вправо"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:bg-[#ccff00] active:text-black transition"
+            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
           >
             <ArrowRight className="h-5 w-5" />
           </button>
