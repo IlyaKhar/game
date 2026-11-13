@@ -30,8 +30,8 @@ const GeometryDashGame = React.lazy(() =>
 const BlockBlastGame = React.lazy(() =>
   import('./games/BlockBlastGame').then((m) => ({ default: m.BlockBlastGame }))
 );
-const SubwaySurfersGame = React.lazy(() =>
-  import('./games/SubwaySurfersGame').then((m) => ({ default: m.SubwaySurfersGame }))
+const FestivalRunnerGame = React.lazy(() =>
+  import('./games/FestivalRunnerGame').then((m) => ({ default: m.FestivalRunnerGame }))
 );
 
 type ViewState =
@@ -196,7 +196,7 @@ export function App() {
                 case 'block':
                   return <BlockBlastGame key={runKey} {...common} />;
                 case 'subway':
-                  return <SubwaySurfersGame key={runKey} {...common} />;
+                  return <FestivalRunnerGame key={runKey} {...common} />;
               }
             }}
           </GameArena>
