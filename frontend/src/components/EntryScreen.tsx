@@ -31,6 +31,9 @@ export const EntryScreen: React.FC<EntryScreenProps> = ({
     if (parts.length < 2 || parts.length > 3) {
       return 'Введите Фамилию и Имя через пробел';
     }
+    if (parts[0] && parts[1] && parts[0].toLowerCase() === parts[1].toLowerCase()) {
+      return 'Фамилия и Имя не могут совпадать';
+    }
     for (const part of parts) {
       if (part.length < 2) {
         return 'Каждое слово в ФИО должно содержать минимум 2 буквы';
