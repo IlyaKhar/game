@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
@@ -16,7 +17,7 @@ export default defineConfig({
               res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
               res.end(
                 JSON.stringify({
-                  error: 'Сервер бэкенда недоступен. Убедитесь, что бэкенд запущен: cd backend && go run ./cmd/api',
+                  error: 'Бэкенд фестиваля временно недоступен. Запустите: cd backend && go run ./cmd/api',
                 })
               );
             }

@@ -3,9 +3,6 @@ import {
   GD_SKIN_PHOTO_1,
   GD_SKIN_PHOTO_2,
   GD_SKIN_PHOTO_3,
-  GD_BILLBOARD_PHOTO_1,
-  GD_BILLBOARD_PHOTO_2,
-  GD_BILLBOARD_PHOTO_3,
   GD_ASSET_IMAGES,
 } from './gd_custom_assets';
 import {
@@ -48,7 +45,7 @@ export interface CubeSkin {
 export const CUBE_SKINS: CubeSkin[] = [
   {
     id: 'utsyshka_og',
-    name: 'Уцышка • OG',
+    name: 'Саня Ананьев с 2ВБ1',
     primaryColor: '#00f0ff',
     secondaryColor: '#ff2e93',
     eyeColor: '#ffffff',
@@ -58,7 +55,7 @@ export const CUBE_SKINS: CubeSkin[] = [
   },
   {
     id: 'utsyshka_curls',
-    name: 'Уцышка • Кудри',
+    name: 'Саня Ананьев с 2ВБ1 (2)',
     primaryColor: '#ffe600',
     secondaryColor: '#ff0055',
     eyeColor: '#ffffff',
@@ -68,7 +65,7 @@ export const CUBE_SKINS: CubeSkin[] = [
   },
   {
     id: 'utsyshka_salam',
-    name: 'Уцышка • Салам',
+    name: 'Саня Ананьев с 2ВБ1 (3)',
     primaryColor: '#3bff3b',
     secondaryColor: '#00f0ff',
     eyeColor: '#ffffff',
@@ -210,20 +207,17 @@ function renderRobTopBillboard(
   y: number,
   w: number,
   h: number,
-  photoUrl: string,
-  title: string,
-  time: number
+  photoUrl: string
 ) {
   ctx.save();
-  // Smooth hover floating
-  const bobY = Math.sin(time * 0.003 + x) * 6;
-  const drawY = y + bobY;
+  // Absolutely stable hanging position - no bobbing, no jerking, completely smooth
+  const drawY = y;
 
   // Outer neon cyber glow
   ctx.shadowColor = '#00f0ff';
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 18;
 
-  // Obsidian panel
+  // Obsidian panel backing
   ctx.fillStyle = '#080119';
   ctx.fillRect(x, drawY, w, h);
 
@@ -237,23 +231,14 @@ function renderRobTopBillboard(
   ctx.strokeRect(x, drawY, w, h);
   ctx.shadowBlur = 0;
 
-  // Photo artwork
+  // Photo artwork filling the entire banner cleanly (NO text, NO caption banner)
   const img = getImage(photoUrl);
   if (img) {
-    ctx.drawImage(img, x + 4, drawY + 4, w - 8, h - 28);
+    ctx.drawImage(img, x + 3.5, drawY + 3.5, w - 7, h - 7);
   } else {
     ctx.fillStyle = '#1e0836';
-    ctx.fillRect(x + 4, drawY + 4, w - 8, h - 28);
+    ctx.fillRect(x + 3.5, drawY + 3.5, w - 7, h - 7);
   }
-
-  // Caption banner
-  ctx.fillStyle = '#120426';
-  ctx.fillRect(x + 2, drawY + h - 24, w - 4, 22);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '900 11px Montserrat, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(title, x + w / 2, drawY + h - 9);
 
   // Neon corner brackets
   ctx.fillStyle = '#00f0ff';
@@ -265,25 +250,359 @@ function renderRobTopBillboard(
   ctx.restore();
 }
 
+function renderRobTopPortal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  portalType: 'ship' | 'cube' | 'wave',
+  time: number
+) {
+  ctx.save();
+  const themeColor = portalType === 'ship' ? '#ff00aa' : portalType === 'wave' ? '#00d4ff' : '#00ff66';
+  const glowColor = portalType === 'ship' ? '#ff33bb' : portalType === 'wave' ? '#00f0ff' : '#39ff14';
+  const innerBg = portalType === 'ship' ? '#28003a' : portalType === 'wave' ? '#002238' : '#002a15';
+  const midX = x + w / 2;
+  const midY = y + h / 2;
+  const radX = w / 2;
+  const radY = h / 2;
+
+  // 1. Ambient Outer Halo Glow
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 22;
+
+  // 2. Outer Ring Structure (Tall Ellipse / Capsule)
+  ctx.fillStyle = '#060112';
+  ctx.beginPath();
+  ctx.ellipse(midX, midY, radX, radY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Swirling Vortex Energy Core
+  const pulse = Math.sin(time * 0.008) * 0.2 + 0.8;
+  const vortexGrad = ctx.createRadialGradient(midX, midY, 4, midX, midY, radY * 0.95);
+  vortexGrad.addColorStop(0, '#ffffff');
+  vortexGrad.addColorStop(0.3, themeColor);
+  vortexGrad.addColorStop(0.7, innerBg);
+  vortexGrad.addColorStop(1, '#050010');
+
+  ctx.fillStyle = vortexGrad;
+  ctx.beginPath();
+  ctx.ellipse(midX, midY, radX - 4, radY - 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Energetic Swirl Waves
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < 3; i++) {
+    const shift = (time * 0.003 + i * 0.33) % 1;
+    const waveR = Math.max(1, (radX - 6) * (1 - shift));
+    const waveH = Math.max(1, (radY - 8) * (1 - shift));
+    ctx.strokeStyle = `rgba(255, 255, 255, ${shift * 0.8 * pulse})`;
+    ctx.beginPath();
+    ctx.ellipse(midX, midY, waveR, waveH, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 5. Heavy Outer Neon Border
+  ctx.strokeStyle = themeColor;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.ellipse(midX, midY, radX, radY, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 6. Top & Bottom Metallic Emitters
+  ctx.fillStyle = '#080119';
+  ctx.strokeStyle = themeColor;
+  ctx.lineWidth = 2;
+  ctx.fillRect(midX - 16, y - 6, 32, 10);
+  ctx.strokeRect(midX - 16, y - 6, 32, 10);
+  ctx.fillRect(midX - 16, y + h - 4, 32, 10);
+  ctx.strokeRect(midX - 16, y + h - 4, 32, 10);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(midX - 8, y - 4, 16, 5);
+  ctx.fillRect(midX - 8, y + h - 1, 16, 5);
+
+  // 7. Center Mode Glyph (Ship, Wave or Cube)
+  ctx.fillStyle = '#ffffff';
+  if (portalType === 'ship') {
+    ctx.beginPath();
+    ctx.moveTo(midX + 11, midY);
+    ctx.lineTo(midX - 8, midY - 10);
+    ctx.lineTo(midX - 4, midY);
+    ctx.lineTo(midX - 8, midY + 10);
+    ctx.closePath();
+    ctx.fill();
+  } else if (portalType === 'wave') {
+    // Sharp Wave Dart Chevron (>)
+    ctx.beginPath();
+    ctx.moveTo(midX + 10, midY);
+    ctx.lineTo(midX - 7, midY - 9);
+    ctx.lineTo(midX - 3, midY);
+    ctx.lineTo(midX - 7, midY + 9);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillRect(midX - 8, midY - 8, 16, 16);
+    ctx.fillStyle = '#060112';
+    ctx.fillRect(midX - 5, midY - 5, 10, 10);
+  }
+
+  ctx.restore();
+}
+
+function renderRobTopWave(
+  ctx: CanvasRenderingContext2D,
+  skin: CubeSkin,
+  angle: number,
+  time: number
+) {
+  ctx.save();
+  ctx.rotate(angle);
+
+  const w = 32;
+  const h = 20;
+
+  // 1. Ambient Glow
+  ctx.shadowColor = skin.borderColor || '#00f0ff';
+  ctx.shadowBlur = 12;
+
+  // 2. Base Dart Polygon: tip at (w/2, 0), top at (-w/2, -h/2), notch at (-w/4, 0), bottom at (-w/2, h/2)
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(-w / 2, -h / 2);
+  ctx.lineTo(-w / 4, 0);
+  ctx.lineTo(-w / 2, h / 2);
+  ctx.closePath();
+
+  // Gradient fill
+  const dartGrad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+  dartGrad.addColorStop(0, '#100424');
+  dartGrad.addColorStop(0.5, skin.primaryColor);
+  dartGrad.addColorStop(1, '#080114');
+  ctx.fillStyle = dartGrad;
+  ctx.fill();
+
+  // Heavy dark border
+  ctx.strokeStyle = '#05010e';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 3. Top light-catching facet
+  const topFacet = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, 0);
+  topFacet.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+  topFacet.addColorStop(0.5, skin.secondaryColor);
+  topFacet.addColorStop(1, '#ffffff');
+  ctx.fillStyle = topFacet;
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(-w / 2, -h / 2);
+  ctx.lineTo(-w / 4, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Center ridge divider line
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-w / 4, 0);
+  ctx.lineTo(w / 2, 0);
+  ctx.stroke();
+
+  // 4. Center Mini-Icon / Eye Core
+  ctx.fillStyle = skin.eyeColor || '#ffffff';
+  ctx.beginPath();
+  ctx.arc(-2, 0, 2.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Razor Sharp Tip Glint (Cross Sparkle)
+  const pulse = Math.sin(time * 0.01) * 0.3 + 0.7;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(w / 2, 0, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(w / 2 - 3, 0);
+  ctx.lineTo(w / 2 + 3, 0);
+  ctx.moveTo(w / 2, -3);
+  ctx.lineTo(w / 2, 3);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function renderRobTopShip(
+  ctx: CanvasRenderingContext2D,
+  skin: CubeSkin,
+  thrusting: boolean,
+  time: number
+) {
+  ctx.save();
+  const width = 54;
+  const height = 30;
+  const halfW = width / 2;
+  const halfH = height / 2;
+
+  // 1. Multi-Stage Thruster Exhaust Flame (Animated when holding thrust)
+  if (thrusting) {
+    const flameLen = 22 + Math.sin(time * 0.04) * 6;
+    const flameGrad = ctx.createLinearGradient(-halfW, 4, -halfW - flameLen, 4);
+    flameGrad.addColorStop(0, '#ffffff');
+    flameGrad.addColorStop(0.2, '#fff275');
+    flameGrad.addColorStop(0.5, '#ff7700');
+    flameGrad.addColorStop(0.85, '#ff0055');
+    flameGrad.addColorStop(1, 'rgba(255, 0, 85, 0)');
+
+    ctx.fillStyle = flameGrad;
+    ctx.shadowColor = '#ff7700';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(-halfW + 2, -1);
+    ctx.lineTo(-halfW - flameLen, 4);
+    ctx.lineTo(-halfW + 2, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Secondary inner white-hot flame core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(-halfW + 2, 1);
+    ctx.lineTo(-halfW - flameLen * 0.5, 4);
+    ctx.lineTo(-halfW + 2, 7);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 2. Rear Engine Titanium Nozzle
+  ctx.fillStyle = '#100c1e';
+  ctx.strokeStyle = '#05020c';
+  ctx.lineWidth = 2;
+  ctx.fillRect(-halfW - 4, -1, 7, 10);
+  ctx.strokeRect(-halfW - 4, -1, 7, 10);
+
+  // Engine ring highlight
+  ctx.strokeStyle = '#00f0ff';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(-halfW - 3, 0, 2, 8);
+
+  // 3. Lower Chassis / Hoverboard Body (Glossy Obsidian & Synthwave Gradient)
+  const hullGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
+  hullGrad.addColorStop(0, '#160830');
+  hullGrad.addColorStop(0.5, skin.primaryColor);
+  hullGrad.addColorStop(1, '#0b0218');
+
+  ctx.fillStyle = hullGrad;
+  ctx.beginPath();
+  ctx.moveTo(-halfW, 4);
+  ctx.lineTo(halfW - 8, 8);
+  ctx.lineTo(halfW + 7, 0);
+  ctx.lineTo(halfW - 4, -6);
+  ctx.lineTo(-4, -4);
+  ctx.lineTo(-halfW + 4, -8);
+  ctx.lineTo(-halfW, -2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Heavy Outer Dark Contour
+  ctx.strokeStyle = '#05010e';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // 4. Specular Hull Ridge Shine
+  const shineGrad = ctx.createLinearGradient(-halfW + 4, 3, halfW + 4, 0);
+  shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+  shineGrad.addColorStop(0.5, skin.borderColor || '#00f0ff');
+  shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0.9)');
+
+  ctx.strokeStyle = shineGrad;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 4, 3);
+  ctx.lineTo(halfW - 8, 7);
+  ctx.lineTo(halfW + 5, 0);
+  ctx.stroke();
+
+  // Side Wing Stabilizer Fin with dual piping
+  ctx.fillStyle = skin.secondaryColor;
+  ctx.beginPath();
+  ctx.moveTo(-16, 2);
+  ctx.lineTo(12, 2);
+  ctx.lineTo(2, 8);
+  ctx.lineTo(-12, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#05010e';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 5. Pilot: Equipped Cube Skin inside Cockpit!
+  const pilotSize = 22;
+  ctx.save();
+  ctx.translate(-2, -7);
+  renderCubeFace(ctx, skin, pilotSize);
+  ctx.restore();
+
+  // 6. Translucent Windscreen / Cockpit Canopy Glass with Specular Glare
+  const canopyGrad = ctx.createLinearGradient(-4, -18, 18, -4);
+  canopyGrad.addColorStop(0, 'rgba(0, 240, 255, 0.45)');
+  canopyGrad.addColorStop(0.6, 'rgba(255, 255, 255, 0.75)');
+  canopyGrad.addColorStop(1, 'rgba(0, 240, 255, 0.15)');
+
+  ctx.fillStyle = canopyGrad;
+  ctx.beginPath();
+  ctx.moveTo(-10, -3);
+  ctx.lineTo(10, -14);
+  ctx.lineTo(20, -3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-8, -5);
+  ctx.lineTo(9, -13);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function renderCubeFace(ctx: CanvasRenderingContext2D, skin: CubeSkin, size: number) {
   if (skin.photoUrl) {
     const img = getImage(skin.photoUrl);
     if (img) {
-      ctx.fillStyle = skin.primaryColor;
+      // 1. Obsidian cyber chassis
+      ctx.fillStyle = '#080214';
       ctx.fillRect(-size / 2, -size / 2, size, size);
 
-      ctx.strokeStyle = skin.borderColor || '#00f0ff';
-      ctx.lineWidth = 3.5;
-      ctx.strokeRect(-size / 2, -size / 2, size, size);
-
+      // 2. Photo artwork cleanly centered
       const pad = 2.5;
       ctx.drawImage(img, -size / 2 + pad, -size / 2 + pad, size - pad * 2, size - pad * 2);
 
+      // 3. Holographic cyber glass glare (diagonal reflection across face)
+      const glareGrad = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
+      glareGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      glareGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.05)');
+      glareGrad.addColorStop(1, 'rgba(0, 240, 255, 0.15)');
+      ctx.fillStyle = glareGrad;
+      ctx.fillRect(-size / 2 + pad, -size / 2 + pad, size - pad * 2, size - pad * 2);
+
+      // 4. Outer Neon Cyber Border with Bloom
+      ctx.strokeStyle = skin.borderColor || '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-size / 2, -size / 2, size, size);
+
+      // 5. Tech corner pins
       ctx.fillStyle = skin.secondaryColor;
-      ctx.fillRect(-size / 2, -size / 2, 4, 4);
-      ctx.fillRect(size / 2 - 4, -size / 2, 4, 4);
-      ctx.fillRect(-size / 2, size / 2 - 4, 4, 4);
-      ctx.fillRect(size / 2 - 4, size / 2 - 4, 4, 4);
+      ctx.fillRect(-size / 2, -size / 2, 4.5, 4.5);
+      ctx.fillRect(size / 2 - 4.5, -size / 2, 4.5, 4.5);
+      ctx.fillRect(-size / 2, size / 2 - 4.5, 4.5, 4.5);
+      ctx.fillRect(size / 2 - 4.5, size / 2 - 4.5, 4.5, 4.5);
       return;
     }
   }
@@ -360,19 +679,25 @@ function renderRobTopSpike(
   y: number,
   w: number,
   h: number,
-  groundY: number,
-  time: number
+  _groundY: number,
+  time: number,
+  inverted: boolean = false,
+  _accentColor: string = '#ff0066'
 ) {
+  ctx.save();
+  if (inverted) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(1, -1);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+  }
   const apexX = x + w / 2;
   const apexY = y;
-  const baseY = groundY;
+  const baseY = y + h;
   const baseLeftX = x;
   const baseRightX = x + w;
 
-  ctx.save();
-
   // 1. Heavy Outer Dark Contour
-  ctx.strokeStyle = '#060012';
+  ctx.strokeStyle = '#050010';
   ctx.lineWidth = 3.5;
   ctx.lineJoin = 'miter';
   ctx.beginPath();
@@ -382,12 +707,12 @@ function renderRobTopSpike(
   ctx.closePath();
   ctx.stroke();
 
-  // 2. Left Facet (Light-catching neon slope)
+  // 2. Left Facet (Light-catching crystal slope with synthwave gradient)
   const leftGrad = ctx.createLinearGradient(baseLeftX, baseY, apexX, apexY);
-  leftGrad.addColorStop(0, '#2d0042');
-  leftGrad.addColorStop(0.35, '#88004f');
+  leftGrad.addColorStop(0, '#220038');
+  leftGrad.addColorStop(0.35, '#7a0048');
   leftGrad.addColorStop(0.8, '#ff0066');
-  leftGrad.addColorStop(1, '#ff66b2');
+  leftGrad.addColorStop(1, '#ff80c0');
 
   ctx.fillStyle = leftGrad;
   ctx.beginPath();
@@ -397,12 +722,12 @@ function renderRobTopSpike(
   ctx.closePath();
   ctx.fill();
 
-  // 3. Right Facet (Deep shadow slope)
+  // 3. Right Facet (Deep obsidian ambient occlusion shadow)
   const rightGrad = ctx.createLinearGradient(baseRightX, baseY, apexX, apexY);
-  rightGrad.addColorStop(0, '#100018');
-  rightGrad.addColorStop(0.4, '#400020');
-  rightGrad.addColorStop(0.85, '#990038');
-  rightGrad.addColorStop(1, '#cc004d');
+  rightGrad.addColorStop(0, '#0a0014');
+  rightGrad.addColorStop(0.4, '#36001a');
+  rightGrad.addColorStop(0.85, '#8c0032');
+  rightGrad.addColorStop(1, '#b80045');
 
   ctx.fillStyle = rightGrad;
   ctx.beginPath();
@@ -412,19 +737,19 @@ function renderRobTopSpike(
   ctx.closePath();
   ctx.fill();
 
-  // 4. Center Geometric Ridge Line
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-  ctx.lineWidth = 1.4;
+  // 4. Center Specular Ridge Line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(apexX, apexY);
   ctx.lineTo(apexX, baseY);
   ctx.stroke();
 
-  // 5. Inner Pulsing Core Hazard Rune
-  const pulse = Math.sin(time * 0.008) * 0.25 + 0.75;
+  // 5. Inner Pulsing Core Hazard Rune (Pulsing with energy)
+  const pulse = Math.sin(time * 0.009) * 0.25 + 0.75;
   const innerH = h * 0.44;
   const innerW = w * 0.32;
-  ctx.fillStyle = `rgba(255, 46, 147, ${0.4 * pulse})`;
+  ctx.fillStyle = `rgba(255, 46, 147, ${0.45 * pulse})`;
   ctx.beginPath();
   ctx.moveTo(apexX, apexY + h * 0.24);
   ctx.lineTo(apexX - innerW / 2, apexY + h * 0.24 + innerH);
@@ -433,17 +758,27 @@ function renderRobTopSpike(
   ctx.fill();
 
   // 6. Base Hazard Plate & Anchoring Teeth
-  ctx.fillStyle = '#090118';
-  ctx.fillRect(baseLeftX - 2, baseY - 3, w + 4, 4);
+  ctx.fillStyle = '#080116';
+  ctx.fillRect(baseLeftX - 2, baseY - 3.5, w + 4, 4.5);
   ctx.fillStyle = '#ff0055';
-  ctx.fillRect(baseLeftX + 3, baseY - 3, 4, 3);
-  ctx.fillRect(baseRightX - 7, baseY - 3, 4, 3);
+  ctx.fillRect(baseLeftX + 3, baseY - 3.5, 4, 3.5);
+  ctx.fillRect(baseRightX - 7, baseY - 3.5, 4, 3.5);
 
-  // 7. Sharp Apex Glint Sparkle
+  // 7. Sharp 4-Point Apex Cross Sparkle (Matching Snake 3D gem glint)
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(apexX, apexY + 0.5, 2, 0, Math.PI * 2);
+  ctx.arc(apexX, apexY + 0.5, 2.2, 0, Math.PI * 2);
   ctx.fill();
+
+  // Cross flares
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(apexX - 4.5, apexY + 0.5);
+  ctx.lineTo(apexX + 4.5, apexY + 0.5);
+  ctx.moveTo(apexX, apexY - 4);
+  ctx.lineTo(apexX, apexY + 5);
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -454,23 +789,25 @@ function renderRobTopBlock(
   y: number,
   w: number,
   h: number,
-  time: number
+  time: number,
+  accentColor: string = '#00f0ff'
 ) {
   ctx.save();
 
-  // Base Obsidian Cyber Background
+  // 1. Glossy Obsidian Metallic Base (Matches Snake 3D stage cubes)
   const bgGrad = ctx.createLinearGradient(x, y, x, y + h);
-  bgGrad.addColorStop(0, '#190a38');
-  bgGrad.addColorStop(1, '#0c031c');
+  bgGrad.addColorStop(0, '#1c0e3a');
+  bgGrad.addColorStop(0.4, '#120726');
+  bgGrad.addColorStop(1, '#080214');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(x, y, w, h);
 
-  // Heavy Outer Dark Border
-  ctx.strokeStyle = '#060012';
+  // 2. Heavy Obsidian Outer Contour
+  ctx.strokeStyle = '#05010e';
   ctx.lineWidth = 3;
   ctx.strokeRect(x, y, w, h);
 
-  // Modular Tiling: each 36px segment gets an authentic GD techno core
+  // 3. Modular Tiling: each 36px segment gets an authentic techno core
   const cellSize = 36;
   const cols = Math.max(1, Math.round(w / cellSize));
   const cellW = w / cols;
@@ -481,91 +818,108 @@ function renderRobTopBlock(
     const cw = cellW;
     const ch = h;
 
-    // Inner Metallic Bevel (3px inset)
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(cx + 3, cy + 3, cw - 6, ch - 6);
-
-    // Dark bottom/right inner bevel shadow
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.lineWidth = 1.5;
+    // 3D Metallic Bevel (Light top/left highlight, deep shadow bottom/right)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(cx + cw - 3, cy + 3);
-    ctx.lineTo(cx + cw - 3, cy + ch - 3);
-    ctx.lineTo(cx + 3, cy + ch - 3);
+    ctx.moveTo(cx + 2, cy + ch - 2);
+    ctx.lineTo(cx + 2, cy + 2);
+    ctx.lineTo(cx + cw - 2, cy + 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.beginPath();
+    ctx.moveTo(cx + cw - 2, cy + 2);
+    ctx.lineTo(cx + cw - 2, cy + ch - 2);
+    ctx.lineTo(cx + 2, cy + ch - 2);
     ctx.stroke();
 
     // Center Diamond (Iconic RobTop rotated square)
     const midX = cx + cw / 2;
     const midY = cy + ch / 2;
-    const dSize = Math.min(cw, ch) * 0.34;
+    const dSize = Math.min(cw, ch) * 0.35;
 
     ctx.save();
     ctx.translate(midX, midY);
     ctx.rotate(Math.PI / 4);
 
-    // Diamond Shadow / Outline
-    ctx.fillStyle = '#080117';
+    // Diamond Shadow / Cavity
+    ctx.fillStyle = '#060012';
     ctx.fillRect(-dSize / 2, -dSize / 2, dSize, dSize);
 
     // Neon Cyber Core in Diamond
-    ctx.strokeStyle = '#00f0ff';
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 1.8;
     ctx.strokeRect(-dSize / 2, -dSize / 2, dSize, dSize);
 
-    // Inner glowing energy cell
-    const dPulse = Math.sin(time * 0.006 + c) * 0.3 + 0.7;
-    ctx.fillStyle = `rgba(0, 240, 255, ${0.45 * dPulse})`;
+    // Inner glowing pulsating energy cell
+    const dPulse = Math.sin(time * 0.007 + c * 0.6) * 0.3 + 0.7;
+    ctx.fillStyle = accentColor;
+    ctx.globalAlpha = 0.5 * dPulse;
     ctx.fillRect(-dSize / 4, -dSize / 4, dSize / 2, dSize / 2);
+
+    // Center white-hot spark in diamond
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.9 * dPulse;
+    ctx.fillRect(-1, -1, 2, 2);
 
     ctx.restore();
 
-    // Corner Metallic Rivets
+    // Corner Metallic Chrome Rivets with glints
     const rR = 2.2;
     const offsets: [number, number][] = [
-      [cx + 6, cy + 6],
-      [cx + cw - 6, cy + 6],
-      [cx + 6, cy + ch - 6],
-      [cx + cw - 6, cy + ch - 6],
+      [cx + 5, cy + 5],
+      [cx + cw - 5, cy + 5],
+      [cx + 5, cy + ch - 5],
+      [cx + cw - 5, cy + ch - 5],
     ];
     for (const offset of offsets) {
       const rx = offset[0];
       const ry = offset[1];
-      ctx.fillStyle = '#2a1147';
+      ctx.fillStyle = '#220e3d';
       ctx.beginPath();
       ctx.arc(rx, ry, rR, 0, Math.PI * 2);
       ctx.fill();
 
+      // Specular pin highlight
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 0.6, ry - 0.6, 1.2, 1.2);
+      ctx.fillRect(rx - 0.7, ry - 0.7, 1.4, 1.4);
     }
 
     // Seam Divider between multi-blocks
     if (c > 0) {
-      ctx.strokeStyle = '#060012';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#05010e';
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx, cy + ch);
       ctx.stroke();
+
+      // Neon seam line
+      ctx.strokeStyle = `${accentColor}44`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 4);
+      ctx.lineTo(cx, cy + ch - 4);
+      ctx.stroke();
     }
   }
 
-  // TOP LANDING SURFACE HIGHLIGHT (HIGH READABILITY FOR JUMPING)
+  // 4. TOP LANDING SURFACE HIGHLIGHT (HIGH READABILITY & NEON BLOOM)
   const landingGrad = ctx.createLinearGradient(x, y, x + w, y);
-  landingGrad.addColorStop(0, '#00f0ff');
+  landingGrad.addColorStop(0, accentColor);
   landingGrad.addColorStop(0.5, '#ffffff');
-  landingGrad.addColorStop(1, '#00f0ff');
+  landingGrad.addColorStop(1, accentColor);
 
   ctx.fillStyle = landingGrad;
-  ctx.shadowColor = '#00f0ff';
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = accentColor;
+  ctx.shadowBlur = 12;
   ctx.fillRect(x + 1, y, w - 2, 3.5);
   ctx.shadowBlur = 0;
 
-  // Front Left Danger Edge (Wall collision kill zone)
-  ctx.fillStyle = 'rgba(255, 46, 147, 0.45)';
-  ctx.fillRect(x, y + 4, 2.5, h - 5);
+  // Front Left Danger Edge (Wall collision kill zone hash)
+  ctx.fillStyle = 'rgba(255, 46, 147, 0.55)';
+  ctx.fillRect(x, y + 4, 3, h - 5);
 
   ctx.restore();
 }
@@ -776,7 +1130,8 @@ function renderRobTopFinish(
   y: number,
   w: number,
   h: number,
-  time: number
+  time: number,
+  accentColor: string = '#00f0ff'
 ) {
   ctx.save();
 
@@ -787,14 +1142,14 @@ function renderRobTopFinish(
   colGrad.addColorStop(1, 'rgba(0, 240, 255, 0.15)');
 
   ctx.fillStyle = colGrad;
-  ctx.shadowColor = '#00f0ff';
+  ctx.shadowColor = accentColor;
   ctx.shadowBlur = 24;
   ctx.fillRect(x, y, w, h);
   ctx.shadowBlur = 0;
 
   // Twin Cyber Pillars
   ctx.fillStyle = '#0a031a';
-  ctx.strokeStyle = '#00f0ff';
+  ctx.strokeStyle = accentColor;
   ctx.lineWidth = 2.5;
 
   ctx.fillRect(x, y, 8, h);
@@ -827,10 +1182,6 @@ function renderRobTopFinish(
   ctx.restore();
 }
 
-// -------------------------------------------------------------
-// 3. PIXELFX PROCEDURAL VFX ENGINE (HUGO DUPREZ PIXEL RECIPES)
-// -------------------------------------------------------------
-
 export interface PixelVFXParticle {
   x: number;
   y: number;
@@ -858,7 +1209,7 @@ export interface PixelShockwave {
 // -------------------------------------------------------------
 // 4. LEVEL & BALANCED ROBTOP PHYSICS CONSTANTS
 // -------------------------------------------------------------
-export type ObstacleKind = 'spike' | 'block' | 'pad' | 'orb' | 'coin' | 'finish' | 'billboard';
+export type ObstacleKind = 'spike' | 'block' | 'pad' | 'orb' | 'coin' | 'finish' | 'portal_ship' | 'portal_cube' | 'portal_wave' | 'billboard';
 
 export interface Obstacle {
   x: number;
@@ -870,6 +1221,7 @@ export interface Obstacle {
   used?: boolean;
   photoUrl?: string;
   title?: string;
+  inverted?: boolean;
 }
 
 const RUN_SPEED_1 = 430;      // 1x speed
@@ -906,8 +1258,8 @@ export const LEVELS: LevelConfig[] = [
   // -----------------------------------------------------------
   {
     id: 0,
-    name: 'STEREO OKSEI',
-    subtitle: 'Уровень 1 • Введение в ритм колледжа',
+    name: 'STEREO MADNESS',
+    subtitle: 'Уровень 1 • Введение в ритм (Easy)',
     difficulty: 'easy',
     difficultyStars: 1,
     length: 8000,
@@ -925,87 +1277,56 @@ export const LEVELS: LevelConfig[] = [
       261.6, 0, 293.7, 0, 329.6, 0, 329.6, 0, 293.7, 0, 261.6, 0, 220, 0, 0, 0,
     ],
     obstacles: [
-      // Intro warm-up runway with celebration photo billboards (first 10%)
-      {
-        x: 220,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_1,
-        title: 'УЦЫШКА • OG',
-      },
-      {
-        x: 420,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_2,
-        title: 'УЦЫШКА • КУДРИ',
-      },
+      // Section 1: Cube warm-up runway (0% - 30%)
       { x: 600, y: 0, w: 36, h: 36, kind: 'spike' },
-      {
-        x: 720,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_3,
-        title: 'УЦЫШКА • САЛАМ',
-      },
       { x: 1000, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 1400, y: 0, w: 36, h: 36, kind: 'spike' },
-
-      // Double spikes introduction
       { x: 1800, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 1836, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // First stair steps
-      { x: 2200, y: 0, w: 72, h: 36, kind: 'block' },
-      { x: 2272, y: 36, w: 72, h: 36, kind: 'block' },
-      // Secret Coin 1 (above high step)
-      { x: 2310, y: 105, w: 30, h: 30, kind: 'coin', coinIndex: 0 },
-      { x: 2450, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Step platforms & Secret Coin 1
+      { x: 2150, y: 0, w: 72, h: 36, kind: 'block' },
+      { x: 2222, y: 36, w: 72, h: 36, kind: 'block' },
+      { x: 2250, y: 105, w: 30, h: 30, kind: 'coin', coinIndex: 0 },
 
-      // Pad launch over triple spike pit
-      { x: 2750, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 2900, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 2936, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 2972, y: 0, w: 36, h: 36, kind: 'spike' },
+      // ~30%: SHIP PORTAL (Transformation to Flying Board / Rocket Ship)
+      { x: 2400, y: 35, w: 44, h: 120, kind: 'portal_ship' },
 
-      // Elevated bridge platforms
-      { x: 3300, y: 40, w: 108, h: 36, kind: 'block' },
-      { x: 3550, y: 76, w: 108, h: 36, kind: 'block' },
-      // Mid-Level Cyber Billboard: Photo 1 (No collision)
-      { x: 3800, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 3836, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Section 2: Ship Flight Cavern (30% - 64%)
+      { x: 2650, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Ceiling hanging structure
+      { x: 2850, y: 220, w: 120, h: 40, kind: 'block' },
+      { x: 2890, y: 184, w: 36, h: 36, kind: 'spike', inverted: true },
 
-      // First Aerial Jump Orb section
-      { x: 4200, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4236, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4240, y: 75, w: 36, h: 36, kind: 'orb' },
-      // Secret Coin 2 (high flight pocket)
-      { x: 4250, y: 130, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
-      { x: 4272, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Floating island
+      { x: 3150, y: 60, w: 72, h: 36, kind: 'block' },
+      { x: 3450, y: 220, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 3500, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Stepping stone platforms
-      { x: 4600, y: 0, w: 72, h: 36, kind: 'block' },
-      { x: 4760, y: 45, w: 72, h: 36, kind: 'block' },
-      { x: 4920, y: 90, w: 72, h: 36, kind: 'block' },
-      { x: 5150, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 5186, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Secret Coin 2 (Flight Upper Air Pocket)
+      { x: 3750, y: 170, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
 
-      // Launch Pad + Second Orb
-      { x: 5500, y: 0, w: 46, h: 14, kind: 'pad' },
-      // Mid-Level Cyber Billboard: Photo 2 (No collision)
-      { x: 5700, y: 80, w: 36, h: 36, kind: 'orb' },
-      { x: 5850, y: 70, w: 80, h: 25, kind: 'block' },
+      // Slalom Gate (Top + Bottom blocks creating flight gap)
+      { x: 3950, y: 0, w: 90, h: 45, kind: 'block' },
+      { x: 3950, y: 195, w: 90, h: 55, kind: 'block' },
 
-      // Rhythm spikes corridor
-      { x: 6200, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 6500, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 6536, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Floating Column
+      { x: 4300, y: 70, w: 50, h: 80, kind: 'block' },
+      { x: 4600, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 4636, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 4850, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4886, y: 0, w: 36, h: 36, kind: 'spike' },
+
+      // ~64%: CUBE PORTAL (Return to Cube Mode)
+      { x: 5100, y: 35, w: 44, h: 120, kind: 'portal_cube' },
+
+      // Section 3: Cube rhythm sprint (64% - 100%)
+      { x: 5400, y: 0, w: 46, h: 14, kind: 'pad' },
+      { x: 5650, y: 80, w: 36, h: 36, kind: 'orb' },
+      { x: 5800, y: 70, w: 80, h: 25, kind: 'block' },
+      { x: 6150, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 6450, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 6486, y: 0, w: 36, h: 36, kind: 'spike' },
 
       // High aerial platform & Secret Coin 3
       { x: 6850, y: 55, w: 108, h: 36, kind: 'block' },
@@ -1013,7 +1334,7 @@ export const LEVELS: LevelConfig[] = [
       { x: 7100, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 7136, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Final sprint into gate
+      // Final sprint into finish
       { x: 7450, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 7750, y: 0, w: 45, h: 220, kind: 'finish' },
     ],
@@ -1024,8 +1345,8 @@ export const LEVELS: LevelConfig[] = [
   // -----------------------------------------------------------
   {
     id: 1,
-    name: 'BACK ON АВТАЧ',
-    subtitle: 'Уровень 2 • Каскадные прыжки и сферы',
+    name: 'BACK ON TRACK',
+    subtitle: 'Уровень 2 • Каскадные прыжки, корабль и волна (Normal)',
     difficulty: 'normal',
     difficultyStars: 2,
     length: 11500,
@@ -1043,111 +1364,109 @@ export const LEVELS: LevelConfig[] = [
       440, 0, 523.3, 0, 587.3, 0, 523.3, 0, 440, 0, 392, 0, 329.6, 0, 392, 0,
     ],
     obstacles: [
-      // Fast start with celebration photo billboards (first 10%)
-      {
-        x: 250,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_1,
-        title: 'УЦЫШКА • OG',
-      },
-      {
-        x: 450,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_2,
-        title: 'УЦЫШКА • КУДРИ',
-      },
+      // -------------------------------------------------------
+      // SECTION 1: CUBE INTRO (0% - 26%)
+      // -------------------------------------------------------
       { x: 600, y: 0, w: 36, h: 36, kind: 'spike' },
-      {
-        x: 800,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_3,
-        title: 'УЦЫШКА • САЛАМ',
-      },
       { x: 950, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 986, y: 0, w: 36, h: 36, kind: 'spike' },
-
-      // Stepping platforms
       { x: 1300, y: 0, w: 72, h: 36, kind: 'block' },
       { x: 1450, y: 40, w: 72, h: 36, kind: 'block' },
       { x: 1600, y: 80, w: 72, h: 36, kind: 'block' },
       { x: 1850, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 1886, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Pad launch to high tower & Secret Coin 1
+      // Pad launch & Secret Coin 1
       { x: 2150, y: 0, w: 46, h: 14, kind: 'pad' },
       { x: 2350, y: 100, w: 72, h: 36, kind: 'block' },
       { x: 2370, y: 160, w: 30, h: 30, kind: 'coin', coinIndex: 0 },
       { x: 2450, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 2486, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 2750, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Chain of two aerial orbs over spike field
-      { x: 2800, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 2836, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 2840, y: 70, w: 36, h: 36, kind: 'orb' },
-      { x: 3050, y: 80, w: 36, h: 36, kind: 'orb' },
-      { x: 3200, y: 45, w: 72, h: 36, kind: 'block' },
-      { x: 3400, y: 0, w: 36, h: 36, kind: 'spike' },
+      // -------------------------------------------------------
+      // SECTION 2: SHIP / FLYING BOARD (26% - 50%)
+      // -------------------------------------------------------
+      { x: 3000, y: 35, w: 44, h: 120, kind: 'portal_ship' },
 
-      // Double Pad Combo
-      { x: 3700, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 3950, y: 55, w: 80, h: 25, kind: 'block' },
-      { x: 4180, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 4400, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4436, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4472, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Flight Cavern with hanging ceiling obstacles & floor hurdles
+      { x: 3250, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 3450, y: 220, w: 120, h: 40, kind: 'block' },
+      { x: 3490, y: 184, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 3750, y: 0, w: 50, h: 80, kind: 'block' },
+      { x: 4000, y: 150, w: 80, h: 40, kind: 'block' },
 
-      // Elevated Maze & Secret Coin 2
-      { x: 4750, y: 40, w: 108, h: 36, kind: 'block' },
-      { x: 4950, y: 80, w: 108, h: 36, kind: 'block' },
-      { x: 5080, y: 140, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
-      { x: 5200, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Secret Coin 2 (Flight high pocket)
+      { x: 4250, y: 160, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
 
-      // Orb Jump Gauntlet
-      { x: 5500, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 5510, y: 75, w: 36, h: 36, kind: 'orb' },
-      { x: 5750, y: 45, w: 72, h: 36, kind: 'block' },
-      { x: 5950, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 5986, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4500, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4500, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 4800, y: 200, w: 130, h: 50, kind: 'block' },
+      { x: 5000, y: 0, w: 60, h: 70, kind: 'block' },
+      { x: 5300, y: 60, w: 80, h: 36, kind: 'block' },
 
-      // Pad into high floaters
-      { x: 6300, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 6550, y: 90, w: 108, h: 36, kind: 'block' },
-      { x: 6800, y: 60, w: 72, h: 36, kind: 'block' },
-      { x: 7050, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7086, y: 0, w: 36, h: 36, kind: 'spike' },
+      // -------------------------------------------------------
+      // SECTION 3: WAVE / STRELOCHKA (50% - 73%)
+      // -------------------------------------------------------
+      { x: 5700, y: 35, w: 44, h: 120, kind: 'portal_wave' },
 
-      // Triple spike jump challenge
-      { x: 7400, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7436, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7472, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Authentic Wave Slalom (Exact 45-degree zig-zag with alternating teeth)
+      // Tooth 1 (Bottom)
+      { x: 6000, y: 0, w: 54, h: 45, kind: 'block' },
+      { x: 6009, y: 45, w: 36, h: 36, kind: 'spike' },
 
-      // Airborne sequence & Secret Coin 3
-      { x: 7800, y: 40, w: 72, h: 36, kind: 'block' },
-      { x: 7980, y: 80, w: 36, h: 36, kind: 'orb' },
-      { x: 8020, y: 140, w: 30, h: 30, kind: 'coin', coinIndex: 2 },
-      { x: 8180, y: 50, w: 72, h: 36, kind: 'block' },
-      { x: 8400, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 8436, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Tooth 2 (Ceiling)
+      { x: 6260, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 6278, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
 
-      // Grand Finale Rush
-      { x: 8800, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 9100, y: 80, w: 36, h: 36, kind: 'orb' },
-      { x: 9350, y: 50, w: 108, h: 36, kind: 'block' },
-      { x: 9600, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 9636, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10000, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10300, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10336, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10700, y: 0, w: 46, h: 14, kind: 'pad' },
+      // Tooth 3 (Bottom)
+      { x: 6520, y: 0, w: 72, h: 55, kind: 'block' },
+      { x: 6538, y: 55, w: 36, h: 36, kind: 'spike' },
+
+      // Tooth 4 (Ceiling)
+      { x: 6780, y: 180, w: 72, h: 65, kind: 'block' },
+      { x: 6798, y: 144, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Tooth 5 (Bottom)
+      { x: 7040, y: 0, w: 72, h: 65, kind: 'block' },
+      { x: 7058, y: 65, w: 36, h: 36, kind: 'spike' },
+
+      // Secret Coin 3 (In high wave peak!)
+      { x: 7300, y: 175, w: 30, h: 30, kind: 'coin', coinIndex: 2 },
+      // Tooth 6 (Ceiling)
+      { x: 7360, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 7378, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Tooth 7 (Bottom)
+      { x: 7640, y: 0, w: 72, h: 60, kind: 'block' },
+      { x: 7658, y: 60, w: 36, h: 36, kind: 'spike' },
+
+      // Tooth 8 (Ceiling)
+      { x: 7920, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 7938, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Pre-portal bottom hazard
+      { x: 8180, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 8216, y: 0, w: 36, h: 36, kind: 'spike' },
+
+      // -------------------------------------------------------
+      // SECTION 4: CUBE FINALE (73% - 100%)
+      // -------------------------------------------------------
+      { x: 8400, y: 35, w: 44, h: 120, kind: 'portal_cube' },
+
+      { x: 8700, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 8736, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 9000, y: 40, w: 72, h: 36, kind: 'block' },
+      { x: 9200, y: 80, w: 36, h: 36, kind: 'orb' },
+      { x: 9400, y: 50, w: 72, h: 36, kind: 'block' },
+      { x: 9650, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 9686, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 9722, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 10000, y: 0, w: 46, h: 14, kind: 'pad' },
+      { x: 10300, y: 80, w: 36, h: 36, kind: 'orb' },
+      { x: 10550, y: 50, w: 108, h: 36, kind: 'block' },
+      { x: 10800, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 10836, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 11200, y: 0, w: 45, h: 220, kind: 'finish' },
     ],
   },
@@ -1157,8 +1476,8 @@ export const LEVELS: LevelConfig[] = [
   // -----------------------------------------------------------
   {
     id: 2,
-    name: 'POLAR ГТТ',
-    subtitle: 'Уровень 3 • Инфернальный хардкор и трипл-шипы',
+    name: 'POLARGEIST',
+    subtitle: 'Уровень 3 • Пещерный хардкор, корабль и волна (Hard)',
     difficulty: 'hard',
     difficultyStars: 3,
     length: 15000,
@@ -1176,40 +1495,13 @@ export const LEVELS: LevelConfig[] = [
       783.9, 0, 783.9, 0, 659.3, 0, 587.3, 0, 523.3, 0, 493.9, 0, 440, 0, 493.9, 0,
     ],
     obstacles: [
-      // Immediate high-pressure intro with celebration photo billboards (first 10%)
-      {
-        x: 240,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_1,
-        title: 'УЦЫШКА • OG',
-      },
+      // -------------------------------------------------------
+      // SECTION 1: HIGH PRESSURE CUBE INTRO (0% - 25%)
+      // -------------------------------------------------------
       { x: 500, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 536, y: 0, w: 36, h: 36, kind: 'spike' },
-      {
-        x: 720,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_2,
-        title: 'УЦЫШКА • КУДРИ',
-      },
       { x: 900, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 936, y: 0, w: 36, h: 36, kind: 'spike' },
-      {
-        x: 1150,
-        y: 110,
-        w: 130,
-        h: 160,
-        kind: 'billboard',
-        photoUrl: GD_BILLBOARD_PHOTO_3,
-        title: 'УЦЫШКА • САЛАМ',
-      },
-
-      // Precision step jumps
       { x: 1250, y: 0, w: 72, h: 36, kind: 'block' },
       { x: 1400, y: 45, w: 72, h: 36, kind: 'block' },
       { x: 1550, y: 90, w: 72, h: 36, kind: 'block' },
@@ -1217,103 +1509,121 @@ export const LEVELS: LevelConfig[] = [
       { x: 1816, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 1852, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Triple spike #1!
+      // Triple spikes & Secret Coin 1
       { x: 2200, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 2236, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 2272, y: 0, w: 36, h: 36, kind: 'spike' },
-
-      // Pad into Orb Aerial Combo & Secret Coin 1
       { x: 2600, y: 0, w: 46, h: 14, kind: 'pad' },
       { x: 2850, y: 90, w: 36, h: 36, kind: 'orb' },
       { x: 2920, y: 155, w: 30, h: 30, kind: 'coin', coinIndex: 0 },
       { x: 3050, y: 60, w: 72, h: 36, kind: 'block' },
       { x: 3250, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 3286, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 3500, y: 0, w: 36, h: 36, kind: 'spike' },
 
-      // Multi-tier floating platforms
-      { x: 3600, y: 45, w: 108, h: 36, kind: 'block' },
-      { x: 3850, y: 90, w: 108, h: 36, kind: 'block' },
-      { x: 4100, y: 45, w: 72, h: 36, kind: 'block' },
-      { x: 4300, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4336, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4372, y: 0, w: 36, h: 36, kind: 'spike' },
+      // -------------------------------------------------------
+      // SECTION 2: SHIP / FLYING BOARD (25% - 50%)
+      // -------------------------------------------------------
+      { x: 3800, y: 35, w: 44, h: 120, kind: 'portal_ship' },
 
-      // Rapid triple orb chain
-      { x: 4700, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 4710, y: 70, w: 36, h: 36, kind: 'orb' },
-      { x: 4950, y: 80, w: 36, h: 36, kind: 'orb' },
-      { x: 5200, y: 90, w: 36, h: 36, kind: 'orb' },
-      { x: 5380, y: 55, w: 80, h: 25, kind: 'block' },
+      // High-Speed Ship Cavern with inverted ceiling teeth & obstacles
+      { x: 4100, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4350, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 4600, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4636, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 4900, y: 200, w: 140, h: 50, kind: 'block' },
+      { x: 4950, y: 164, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 5200, y: 70, w: 60, h: 80, kind: 'block' },
+      { x: 5500, y: 0, w: 70, h: 90, kind: 'block' },
 
-      // Secret Coin 2 (narrow ceiling clearance)
-      { x: 5700, y: 40, w: 72, h: 36, kind: 'block' },
-      { x: 5750, y: 110, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
-      { x: 5900, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 5936, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 5972, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Secret Coin 2 (Ship high cavern pocket)
+      { x: 5800, y: 160, w: 30, h: 30, kind: 'coin', coinIndex: 1 },
 
-      // The Tower Climb
-      { x: 6300, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 6500, y: 100, w: 72, h: 36, kind: 'block' },
-      { x: 6700, y: 130, w: 72, h: 36, kind: 'block' },
-      { x: 6900, y: 80, w: 72, h: 36, kind: 'block' },
-      { x: 7150, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7186, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 6100, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 6136, y: 214, w: 36, h: 36, kind: 'spike', inverted: true },
+      { x: 6450, y: 0, w: 60, h: 70, kind: 'block' },
+      { x: 6450, y: 180, w: 60, h: 70, kind: 'block' },
+      { x: 6800, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 6836, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 7100, y: 60, w: 80, h: 36, kind: 'block' },
 
-      // Mid-Level Cyber Billboard: Photo 3 (No collision)
-      // Triple spike #2
-      { x: 7550, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7586, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 7622, y: 0, w: 36, h: 36, kind: 'spike' },
+      // -------------------------------------------------------
+      // SECTION 3: WAVE / STRELOCHKA (50% - 75%)
+      // -------------------------------------------------------
+      { x: 7500, y: 35, w: 44, h: 120, kind: 'portal_wave' },
 
-      // Double Pad Over Spikes
-      { x: 7950, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 8200, y: 65, w: 72, h: 36, kind: 'block' },
-      { x: 8400, y: 65, w: 46, h: 14, kind: 'pad' },
-      { x: 8650, y: 110, w: 72, h: 36, kind: 'block' },
+      // Inferno Wave Slalom (Tight 45-degree zig-zag with alternating teeth)
+      // Tooth 1 (Bottom)
+      { x: 7800, y: 0, w: 54, h: 50, kind: 'block' },
+      { x: 7809, y: 50, w: 36, h: 36, kind: 'spike' },
 
-      // Secret Coin 3 (air pocket after high pad)
-      { x: 8850, y: 150, w: 30, h: 30, kind: 'coin', coinIndex: 2 },
-      { x: 9100, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 9136, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Tooth 2 (Ceiling)
+      { x: 8060, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 8078, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
 
-      // Gauntlet Corridor
-      { x: 9500, y: 40, w: 108, h: 36, kind: 'block' },
-      { x: 9750, y: 70, w: 108, h: 36, kind: 'block' },
-      { x: 10050, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10086, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 10122, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Tooth 3 (Bottom)
+      { x: 8320, y: 0, w: 72, h: 65, kind: 'block' },
+      { x: 8338, y: 65, w: 36, h: 36, kind: 'spike' },
 
-      // Mid-Air Leap of Faith
-      { x: 10500, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 10750, y: 85, w: 36, h: 36, kind: 'orb' },
-      { x: 11000, y: 95, w: 36, h: 36, kind: 'orb' },
-      { x: 11250, y: 55, w: 72, h: 36, kind: 'block' },
+      // Tooth 4 (Ceiling)
+      { x: 8580, y: 180, w: 72, h: 65, kind: 'block' },
+      { x: 8598, y: 144, w: 36, h: 36, kind: 'spike', inverted: true },
 
-      // High-speed final descent
-      { x: 11600, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 11636, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 12000, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 12036, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 12072, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Tooth 5 (Bottom)
+      { x: 8840, y: 0, w: 72, h: 70, kind: 'block' },
+      { x: 8858, y: 70, w: 36, h: 36, kind: 'spike' },
 
-      // Final Pad sequence
-      { x: 12450, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 12700, y: 90, w: 80, h: 25, kind: 'block' },
-      { x: 13000, y: 70, w: 36, h: 36, kind: 'orb' },
-      { x: 13300, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 13336, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 13700, y: 0, w: 46, h: 14, kind: 'pad' },
-      { x: 14100, y: 0, w: 36, h: 36, kind: 'spike' },
-      { x: 14136, y: 0, w: 36, h: 36, kind: 'spike' },
+      // Secret Coin 3 (In Wave razor peak!)
+      { x: 9100, y: 175, w: 30, h: 30, kind: 'coin', coinIndex: 2 },
+      // Tooth 6 (Ceiling)
+      { x: 9160, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 9178, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Tooth 7 (Bottom)
+      { x: 9440, y: 0, w: 72, h: 60, kind: 'block' },
+      { x: 9458, y: 60, w: 36, h: 36, kind: 'spike' },
+
+      // Tooth 8 (Ceiling)
+      { x: 9720, y: 185, w: 72, h: 60, kind: 'block' },
+      { x: 9738, y: 149, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Tooth 9 (Bottom)
+      { x: 10000, y: 0, w: 72, h: 65, kind: 'block' },
+      { x: 10018, y: 65, w: 36, h: 36, kind: 'spike' },
+
+      // Tooth 10 (Ceiling)
+      { x: 10280, y: 180, w: 72, h: 65, kind: 'block' },
+      { x: 10298, y: 144, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // Pre-portal teeth
+      { x: 10560, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 10596, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 10820, y: 190, w: 90, h: 55, kind: 'block' },
+      { x: 10850, y: 154, w: 36, h: 36, kind: 'spike', inverted: true },
+
+      // -------------------------------------------------------
+      // SECTION 4: GRAND FINALE CUBE RUSH (75% - 100%)
+      // -------------------------------------------------------
+      { x: 11200, y: 35, w: 44, h: 120, kind: 'portal_cube' },
+
+      { x: 11500, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 11536, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 11800, y: 40, w: 108, h: 36, kind: 'block' },
+      { x: 12050, y: 70, w: 108, h: 36, kind: 'block' },
+      { x: 12350, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 12386, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 12422, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 12800, y: 0, w: 46, h: 14, kind: 'pad' },
+      { x: 13050, y: 85, w: 36, h: 36, kind: 'orb' },
+      { x: 13300, y: 95, w: 36, h: 36, kind: 'orb' },
+      { x: 13550, y: 55, w: 72, h: 36, kind: 'block' },
+      { x: 13900, y: 0, w: 46, h: 14, kind: 'pad' },
+      { x: 14200, y: 0, w: 36, h: 36, kind: 'spike' },
+      { x: 14236, y: 0, w: 36, h: 36, kind: 'spike' },
       { x: 14600, y: 0, w: 45, h: 220, kind: 'finish' },
     ],
   },
 ];
-
-// -------------------------------------------------------------
-// 5. AUTHENTIC DIFFICULTY FACE COMPONENTS
-// -------------------------------------------------------------
 
 export const EasyDifficultyFace: React.FC<{ className?: string }> = ({ className = 'w-14 h-14' }) => (
   <svg viewBox="0 0 100 100" className={className} aria-label="Easy Difficulty">
@@ -1501,6 +1811,25 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
         osc.start(now + idx * 0.04);
         osc.stop(now + idx * 0.04 + 0.22);
       });
+    } catch {}
+  };
+
+  const playSynthPortal = () => {
+    if (sfx.muted) return;
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
     } catch {}
   };
 
@@ -1721,6 +2050,9 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
     let cubeVy = 0;
     let cubeRotation = 0;
     let onGround = true;
+    let playerMode: 'cube' | 'ship' | 'wave' = 'cube';
+    let shipPitch = 0;
+    let waveTrail: { worldX: number; y: number }[] = [];
 
     // Load active level obstacles
     let obstacles: Obstacle[] = JSON.parse(JSON.stringify(levelRef.current.obstacles));
@@ -1731,8 +2063,31 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
     let shockwaves: PixelShockwave[] = [];
     let cubeTrail: { worldX: number; y: number; rot: number; alpha: number }[] = [];
     let trailTimer = 0;
-    let bgHue = levelRef.current.bgHue;
     let isDying = false;
+
+    // Persistent Cyber Starfield (Cohesive with Snake 3D synthwave universe)
+    interface CyberStar {
+      x: number;
+      y: number;
+      size: number;
+      speed: number;
+      baseAlpha: number;
+      phase: number;
+      color: string;
+    }
+    const cyberStars: CyberStar[] = [];
+    const starPalette = ['#ffffff', '#00f0ff', '#ff2e93', '#c4b5fd', '#facc15'];
+    for (let i = 0; i < 90; i++) {
+      cyberStars.push({
+        x: Math.random() * 900,
+        y: Math.random() * 340,
+        size: Math.random() * 2.2 + 0.8,
+        speed: Math.random() * 0.14 + 0.04,
+        baseAlpha: Math.random() * 0.55 + 0.25,
+        phase: Math.random() * Math.PI * 2,
+        color: starPalette[Math.floor(Math.random() * starPalette.length)]!,
+      });
+    }
 
     function resetLevel() {
       isDying = false;
@@ -1741,6 +2096,9 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
       cubeVy = 0;
       cubeRotation = 0;
       onGround = true;
+      playerMode = 'cube';
+      shipPitch = 0;
+      waveTrail = [];
       obstacles = JSON.parse(JSON.stringify(levelRef.current.obstacles));
       currentCoins = [false, false, false];
       setCoinsCollected([false, false, false]);
@@ -1789,6 +2147,7 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
 
     function doJump() {
       if (screenRef.current !== 'playing') return;
+      if (playerMode === 'ship' || playerMode === 'wave') return;
       if (onGround) {
         cubeVy = JUMP_FORCE;
         onGround = false;
@@ -2018,29 +2377,61 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
       lastTime = currentTime;
 
       const lvl = levelRef.current;
+      const activeSkin = skinRef.current;
       const scaleX = canvas!.width / 900;
       const scaleY = canvas!.height / 450;
 
       ctx!.save();
       ctx!.scale(scaleX, scaleY);
 
-      // 1. DYNAMIC COLOR PULSING BACKGROUND
-      bgHue = (bgHue + dt * 10) % 360;
-      const bgGrad = ctx!.createLinearGradient(0, 0, 0, 450);
-      bgGrad.addColorStop(0, `hsl(${bgHue}, 60%, 7%)`);
-      bgGrad.addColorStop(0.7, `hsl(${bgHue + 25}, 65%, 12%)`);
-      bgGrad.addColorStop(1, '#05010d');
+      // 1. DYNAMIC SYNTHWAVE SPACE BACKGROUND (COHESIVE WITH SNAKE 3D)
+      const bgGrad = ctx!.createLinearGradient(0, 0, 0, GROUND_Y);
+      if (lvl.id === 0) {
+        // Level 1: Cyber Sunset / Cyan-Magenta space
+        bgGrad.addColorStop(0, '#0a031a');
+        bgGrad.addColorStop(0.65, '#160833');
+        bgGrad.addColorStop(1, '#230a47');
+      } else if (lvl.id === 1) {
+        // Level 2: Emerald Matrix / Deep Cyber Jade space
+        bgGrad.addColorStop(0, '#03120d');
+        bgGrad.addColorStop(0.65, '#07241a');
+        bgGrad.addColorStop(1, '#0e3828');
+      } else {
+        // Level 3: Inferno Ultraviolet space
+        bgGrad.addColorStop(0, '#150218');
+        bgGrad.addColorStop(0.65, '#29052d');
+        bgGrad.addColorStop(1, '#3d0738');
+      }
       ctx!.fillStyle = bgGrad;
       ctx!.fillRect(0, 0, 900, 450);
 
-      // Parallax background grid
-      const bgOffset = (worldX * 0.18) % 80;
-      ctx!.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      // Atmospheric Horizon Neon Bloom (Pulsing gently near the ground)
+      const pulseBloom = Math.sin(currentTime * 0.003) * 0.15 + 0.85;
+      const horizonGrad = ctx!.createRadialGradient(450, GROUND_Y, 20, 450, GROUND_Y, 400);
+      horizonGrad.addColorStop(0, `rgba(${lvl.id === 0 ? '0, 240, 255' : lvl.id === 1 ? '57, 255, 20' : '255, 0, 85'}, ${0.18 * pulseBloom})`);
+      horizonGrad.addColorStop(0.6, `rgba(255, 46, 147, ${0.08 * pulseBloom})`);
+      horizonGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx!.fillStyle = horizonGrad;
+      ctx!.fillRect(0, 0, 900, GROUND_Y);
+
+      // Twinkling Cyber Stars with Parallax Drift
+      for (const st of cyberStars) {
+        const sx = ((st.x - worldX * st.speed) % 900 + 900) % 900;
+        const twinkle = st.baseAlpha * (0.65 + 0.35 * Math.sin(currentTime * 0.003 + st.phase));
+        ctx!.fillStyle = st.color;
+        ctx!.globalAlpha = twinkle;
+        ctx!.fillRect(sx, st.y, st.size, st.size);
+      }
+      ctx!.globalAlpha = 1;
+
+      // Parallax Laser Grid Columns (Fading perspective lines)
+      const bgOffset = (worldX * 0.16) % 90;
+      ctx!.strokeStyle = 'rgba(255, 255, 255, 0.035)';
       ctx!.lineWidth = 1;
-      for (let x = -bgOffset; x < 900; x += 80) {
+      for (let x = -bgOffset; x < 900; x += 90) {
         ctx!.beginPath();
         ctx!.moveTo(x, 0);
-        ctx!.lineTo(x, 450);
+        ctx!.lineTo(x, GROUND_Y);
         ctx!.stroke();
       }
 
@@ -2048,40 +2439,171 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
       if (screenRef.current === 'playing' && !isDying) {
         worldX += lvl.speed * dt;
 
-        if (isHoldingRef.current && onGround) {
-          doJump();
-        }
+        if (playerMode === 'cube') {
+          if (isHoldingRef.current && onGround) {
+            doJump();
+          }
 
-        cubeVy += GRAVITY * dt;
-        cubeY -= cubeVy * dt;
+          cubeVy += GRAVITY * dt;
+          cubeY -= cubeVy * dt;
 
-        // Platform detection under cube
-        let currentPlatformY = 0;
-        const playerWorldLeft = worldX + cubeX;
-        const playerWorldRight = playerWorldLeft + CUBE_SIZE;
+          // Platform detection under cube
+          let currentPlatformY = 0;
+          const playerWorldLeft = worldX + cubeX;
+          const playerWorldRight = playerWorldLeft + CUBE_SIZE;
 
-        for (const obs of obstacles) {
-          if (obs.kind === 'block') {
-            const bLeft = obs.x;
-            const bRight = obs.x + obs.w;
-            const bTop = obs.y + obs.h;
+          for (const obs of obstacles) {
+            if (obs.kind === 'block') {
+              const bLeft = obs.x;
+              const bRight = obs.x + obs.w;
+              const bTop = obs.y + obs.h;
 
-            if (playerWorldRight > bLeft + 3 && playerWorldLeft < bRight - 3) {
-              if (cubeY >= bTop - 12 && cubeY <= bTop + 20 && cubeVy >= 0) {
-                currentPlatformY = Math.max(currentPlatformY, bTop);
+              if (playerWorldRight > bLeft + 3 && playerWorldLeft < bRight - 3) {
+                if (cubeY >= bTop - 12 && cubeY <= bTop + 20 && cubeVy >= 0) {
+                  currentPlatformY = Math.max(currentPlatformY, bTop);
+                }
               }
             }
           }
-        }
 
-        if (cubeY <= currentPlatformY) {
-          cubeY = currentPlatformY;
-          cubeVy = 0;
-          onGround = true;
-          cubeRotation = Math.round(cubeRotation / (Math.PI / 2)) * (Math.PI / 2);
-        } else {
-          onGround = false;
-          cubeRotation += dt * 9.2;
+          if (cubeY <= currentPlatformY) {
+            cubeY = currentPlatformY;
+            cubeVy = 0;
+            onGround = true;
+            cubeRotation = Math.round(cubeRotation / (Math.PI / 2)) * (Math.PI / 2);
+          } else {
+            onGround = false;
+            cubeRotation += dt * 9.2;
+          }
+
+          // Emit ground sparks backwards
+          if (onGround && Math.random() < 0.35) {
+            pixelParticles.push({
+              x: cubeX,
+              y: GROUND_Y - 2,
+              vx: -Math.random() * 120 - 60,
+              vy: -Math.random() * 35 - 10,
+              size: Math.random() * 3 + 2,
+              color: 'rgba(255, 255, 255, 0.65)',
+              life: 0.22,
+              maxLife: 0.22,
+              kind: 'spark',
+            });
+          }
+        } else if (playerMode === 'ship') {
+          // ---------------------------------------------------------
+          // SHIP / ROCKET FLIGHT PHYSICS (AUTHENTIC ROBTOP AERODYNAMICS)
+          // ---------------------------------------------------------
+          const SHIP_GRAVITY = 1600;
+          const SHIP_THRUST = 2900;
+          const SHIP_MAX_SPEED = 480;
+          const CEILING_Y = 280;
+
+          const isThrusting = isHoldingRef.current;
+          if (isThrusting) {
+            cubeVy -= SHIP_THRUST * dt;
+          } else {
+            cubeVy += SHIP_GRAVITY * dt;
+          }
+
+          cubeVy = Math.max(-SHIP_MAX_SPEED, Math.min(SHIP_MAX_SPEED, cubeVy));
+          cubeY -= cubeVy * dt;
+
+          // Smooth aerodynamic tilt
+          const targetPitch = (cubeVy / SHIP_MAX_SPEED) * 0.52;
+          shipPitch += (targetPitch - shipPitch) * Math.min(1, dt * 14);
+
+          // Boundaries
+          if (cubeY >= CEILING_Y) {
+            cubeY = CEILING_Y;
+            if (cubeVy < 0) cubeVy = 0;
+          }
+
+          if (cubeY <= 0) {
+            cubeY = 0;
+            if (cubeVy > 0) cubeVy = 0;
+            onGround = true;
+          } else {
+            onGround = false;
+          }
+
+          // Fiery rocket thruster particles when boosting
+          if (isThrusting) {
+            const nozzleX = cubeX - 14;
+            const nozzleY = GROUND_Y - cubeY - CUBE_SIZE / 2 + 4;
+            for (let i = 0; i < 2; i++) {
+              pixelParticles.push({
+                x: nozzleX,
+                y: nozzleY + (Math.random() - 0.5) * 6,
+                vx: -Math.random() * 190 - 110,
+                vy: (Math.random() - 0.5) * 50 + cubeVy * 0.15,
+                size: Math.random() * 4 + 3,
+                color: Math.random() < 0.6 ? '#ffaa00' : (Math.random() < 0.5 ? '#ff3300' : '#ffff55'),
+                life: 0.22,
+                maxLife: 0.22,
+                kind: 'spark',
+              });
+            }
+          } else if (Math.random() < 0.25) {
+            pixelParticles.push({
+              x: cubeX - 12,
+              y: GROUND_Y - cubeY - CUBE_SIZE / 2 + 4,
+              vx: -Math.random() * 80 - 40,
+              vy: (Math.random() - 0.5) * 20,
+              size: 2.5,
+              color: '#00f0ff',
+              life: 0.15,
+              maxLife: 0.15,
+              kind: 'spark',
+            });
+          }
+        } else if (playerMode === 'wave') {
+          // ---------------------------------------------------------
+          // WAVE / ARROW PHYSICS (EXACT 45-DEGREE ZIG-ZAG DIAGONAL)
+          // ---------------------------------------------------------
+          const isHolding = isHoldingRef.current;
+          if (isHolding) {
+            cubeVy = -lvl.speed; // UP at constant 45-deg velocity
+          } else {
+            cubeVy = lvl.speed;  // DOWN at constant 45-deg velocity
+          }
+
+          cubeY -= cubeVy * dt;
+
+          const CEILING_Y = 275;
+          if (cubeY >= CEILING_Y) {
+            cubeY = CEILING_Y;
+          }
+          if (cubeY <= 0) {
+            cubeY = 0;
+            onGround = true;
+          } else {
+            onGround = false;
+          }
+
+          // Record wave trail point
+          waveTrail.push({
+            worldX: worldX + cubeX + CUBE_SIZE / 2,
+            y: cubeY + CUBE_SIZE / 2,
+          });
+          while (waveTrail.length > 0 && waveTrail[0]!.worldX < worldX - 700) {
+            waveTrail.shift();
+          }
+
+          // Emit fine neon trail sparks
+          if (Math.random() < 0.45) {
+            pixelParticles.push({
+              x: cubeX - 6,
+              y: GROUND_Y - cubeY - CUBE_SIZE / 2 + (Math.random() - 0.5) * 4,
+              vx: -Math.random() * 120 - 60,
+              vy: (Math.random() - 0.5) * 30,
+              size: Math.random() * 3 + 2,
+              color: activeSkin.primaryColor || '#00f0ff',
+              life: 0.18,
+              maxLife: 0.18,
+              kind: 'spark',
+            });
+          }
         }
 
         // REAL MOTION TRAIL: Store world position
@@ -2091,23 +2613,8 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
           cubeTrail.push({
             worldX: worldX + cubeX,
             y: cubeY,
-            rot: cubeRotation,
+            rot: playerMode === 'ship' ? shipPitch : cubeRotation,
             alpha: 0.55,
-          });
-        }
-
-        // Emit ground sparks backwards
-        if (onGround && Math.random() < 0.35) {
-          pixelParticles.push({
-            x: cubeX,
-            y: GROUND_Y - 2,
-            vx: -Math.random() * 120 - 60,
-            vy: -Math.random() * 35 - 10,
-            size: Math.random() * 3 + 2,
-            color: 'rgba(255, 255, 255, 0.65)',
-            life: 0.22,
-            maxLife: 0.22,
-            kind: 'spark',
           });
         }
 
@@ -2127,6 +2634,136 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
           const oRight = obs.x + obs.w;
           const oBottom = obs.y;
           const oTop = obs.y + obs.h;
+
+          // Ship Portal
+          if (obs.kind === 'portal_ship') {
+            if (
+              pBox.x + pBox.w > oLeft &&
+              pBox.x < oRight &&
+              pBox.y + pBox.h > oBottom &&
+              pBox.y < oTop
+            ) {
+              if (playerMode !== 'ship') {
+                playerMode = 'ship';
+                cubeVy = -120;
+                shipPitch = -0.15;
+                playSynthPortal();
+
+                shockwaves.push({
+                  x: obs.x + obs.w / 2 - worldX,
+                  y: GROUND_Y - (obs.y + obs.h / 2),
+                  r: 10,
+                  maxR: 90,
+                  alpha: 1,
+                  color: '#ff00aa',
+                  thick: 4,
+                });
+
+                for (let i = 0; i < 20; i++) {
+                  const ang = Math.random() * Math.PI * 2;
+                  const spd = Math.random() * 220 + 80;
+                  pixelParticles.push({
+                    x: obs.x + obs.w / 2 - worldX,
+                    y: GROUND_Y - (obs.y + obs.h / 2),
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    size: Math.random() * 4 + 3,
+                    color: i % 2 === 0 ? '#ff00aa' : '#00f0ff',
+                    life: 0.45,
+                    maxLife: 0.45,
+                    kind: 'spark',
+                  });
+                }
+              }
+            }
+            continue;
+          }
+
+          // Wave Portal
+          if (obs.kind === 'portal_wave') {
+            if (
+              pBox.x + pBox.w > oLeft &&
+              pBox.x < oRight &&
+              pBox.y + pBox.h > oBottom &&
+              pBox.y < oTop
+            ) {
+              if (playerMode !== 'wave') {
+                playerMode = 'wave';
+                waveTrail = [];
+                playSynthPortal();
+
+                shockwaves.push({
+                  x: obs.x + obs.w / 2 - worldX,
+                  y: GROUND_Y - (obs.y + obs.h / 2),
+                  r: 10,
+                  maxR: 90,
+                  alpha: 1,
+                  color: '#00d4ff',
+                  thick: 4,
+                });
+
+                for (let i = 0; i < 20; i++) {
+                  const ang = Math.random() * Math.PI * 2;
+                  const spd = Math.random() * 220 + 80;
+                  pixelParticles.push({
+                    x: obs.x + obs.w / 2 - worldX,
+                    y: GROUND_Y - (obs.y + obs.h / 2),
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    size: Math.random() * 4 + 3,
+                    color: i % 2 === 0 ? '#00d4ff' : '#ffffff',
+                    life: 0.45,
+                    maxLife: 0.45,
+                    kind: 'spark',
+                  });
+                }
+              }
+            }
+            continue;
+          }
+
+          // Cube Portal
+          if (obs.kind === 'portal_cube') {
+            if (
+              pBox.x + pBox.w > oLeft &&
+              pBox.x < oRight &&
+              pBox.y + pBox.h > oBottom &&
+              pBox.y < oTop
+            ) {
+              if (playerMode !== 'cube') {
+                playerMode = 'cube';
+                cubeRotation = 0;
+                playSynthPortal();
+
+                shockwaves.push({
+                  x: obs.x + obs.w / 2 - worldX,
+                  y: GROUND_Y - (obs.y + obs.h / 2),
+                  r: 10,
+                  maxR: 90,
+                  alpha: 1,
+                  color: '#00ff66',
+                  thick: 4,
+                });
+
+                for (let i = 0; i < 20; i++) {
+                  const ang = Math.random() * Math.PI * 2;
+                  const spd = Math.random() * 220 + 80;
+                  pixelParticles.push({
+                    x: obs.x + obs.w / 2 - worldX,
+                    y: GROUND_Y - (obs.y + obs.h / 2),
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    size: Math.random() * 4 + 3,
+                    color: i % 2 === 0 ? '#00ff66' : '#ffe600',
+                    life: 0.45,
+                    maxLife: 0.45,
+                    kind: 'spark',
+                  });
+                }
+              }
+            }
+            continue;
+          }
 
           // Secret Coin
           if (obs.kind === 'coin' && !obs.used && obs.coinIndex !== undefined) {
@@ -2183,13 +2820,13 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
             }
           }
 
-          // Spike Collision (Fair 60% inner core hitbox)
+          // Spike Collision (Fair inner hitbox, supports inverted spikes)
           if (obs.kind === 'spike') {
             const innerPad = 9;
             const sLeft = oLeft + innerPad;
             const sRight = oRight - innerPad;
-            const sTop = oTop - 6;
-            const sBottom = oBottom;
+            const sBottom = obs.inverted ? oBottom + 6 : oBottom;
+            const sTop = obs.inverted ? oTop : oTop - 6;
 
             if (
               pBox.x + pBox.w > sLeft &&
@@ -2247,31 +2884,71 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
         }
       }
 
-      // 3. DRAW GROUND FLOOR & CHECKERBOARD PATTERN
+      // 3. DRAW GLOSSY OBSIDIAN GROUND & NEON CURB RAILS (SNAKE 3D AESTHETIC)
       const floorGrad = ctx!.createLinearGradient(0, GROUND_Y, 0, 450);
-      floorGrad.addColorStop(0, '#100326');
-      floorGrad.addColorStop(1, '#050010');
+      floorGrad.addColorStop(0, '#0e0824');
+      floorGrad.addColorStop(0.35, '#080317');
+      floorGrad.addColorStop(1, '#03010a');
       ctx!.fillStyle = floorGrad;
       ctx!.fillRect(0, GROUND_Y, 900, 450 - GROUND_Y);
 
-      // Neon glowing top floor edge
+      // Cyber Grid Tiles on Floor (recalls Snake 3D obsidian arena grid)
+      const groundOffset = (worldX % 36);
+      ctx!.strokeStyle = 'rgba(0, 240, 255, 0.1)';
+      ctx!.lineWidth = 1;
+      for (let x = -groundOffset; x < 900; x += 36) {
+        ctx!.strokeRect(x, GROUND_Y + 4, 36, 36);
+        ctx!.strokeRect(x, GROUND_Y + 40, 36, 45);
+      }
+
+      // Neon cyber accent checkerboard tiles
+      ctx!.fillStyle = `${lvl.accentColor}18`;
+      for (let x = -groundOffset; x < 900; x += 72) {
+        ctx!.fillRect(x + 4, GROUND_Y + 6, 28, 14);
+        ctx!.fillRect(x + 40, GROUND_Y + 24, 28, 14);
+      }
+
+      // Subtle light reflection pool under the player
+      const playerAltitudeRatio = Math.max(0, 1 - cubeY / 220);
+      if (playerAltitudeRatio > 0.05) {
+        const poolW = 54 + (1 - playerAltitudeRatio) * 30;
+        const poolH = 8 * playerAltitudeRatio;
+        const poolGrad = ctx!.createRadialGradient(cubeX + CUBE_SIZE / 2, GROUND_Y + 3, 2, cubeX + CUBE_SIZE / 2, GROUND_Y + 3, poolW / 2);
+        poolGrad.addColorStop(0, `rgba(${lvl.id === 0 ? '0, 240, 255' : lvl.id === 1 ? '57, 255, 20' : '255, 0, 85'}, ${0.35 * playerAltitudeRatio})`);
+        poolGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx!.fillStyle = poolGrad;
+        ctx!.beginPath();
+        ctx!.ellipse(cubeX + CUBE_SIZE / 2, GROUND_Y + 3, poolW / 2, poolH, 0, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+
+      // Dual Neon Laser Curb (Directly inspired by Snake 3D's glowing rail pipes)
+      // Lower secondary neon rail (Magenta / Pink)
+      ctx!.strokeStyle = '#ff2e93';
+      ctx!.lineWidth = 2;
+      ctx!.beginPath();
+      ctx!.moveTo(0, GROUND_Y + 3);
+      ctx!.lineTo(900, GROUND_Y + 3);
+      ctx!.stroke();
+
+      // Upper primary neon rail (Level Accent with intense neon bloom)
       ctx!.strokeStyle = lvl.accentColor;
-      ctx!.lineWidth = 3;
+      ctx!.lineWidth = 3.5;
       ctx!.shadowColor = lvl.accentColor;
-      ctx!.shadowBlur = 12;
+      ctx!.shadowBlur = 14;
+      ctx!.beginPath();
+      ctx!.moveTo(0, GROUND_Y);
+      ctx!.lineTo(900, GROUND_Y);
+      ctx!.stroke();
+
+      // White-hot inner core laser line
+      ctx!.strokeStyle = '#ffffff';
+      ctx!.lineWidth = 1.2;
       ctx!.beginPath();
       ctx!.moveTo(0, GROUND_Y);
       ctx!.lineTo(900, GROUND_Y);
       ctx!.stroke();
       ctx!.shadowBlur = 0;
-
-      // Authentic GD checkerboard ground
-      const groundOffset = (worldX % 36);
-      ctx!.fillStyle = 'rgba(255, 46, 147, 0.15)';
-      for (let x = -groundOffset; x < 900; x += 36) {
-        ctx!.fillRect(x, GROUND_Y + 4, 18, 18);
-        ctx!.fillRect(x + 18, GROUND_Y + 22, 18, 18);
-      }
 
       // 4. DRAW ROBTOP AUTHENTIC OBSTACLES (SPIKES, BLOCKS, PADS, ORBS)
       for (const obs of obstacles) {
@@ -2280,9 +2957,9 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
         const renderY = GROUND_Y - obs.y - obs.h;
 
         if (obs.kind === 'spike') {
-          renderRobTopSpike(ctx!, renderX, renderY, obs.w, obs.h, GROUND_Y - obs.y, currentTime);
+          renderRobTopSpike(ctx!, renderX, renderY, obs.w, obs.h, GROUND_Y - obs.y, currentTime, obs.inverted, lvl.accentColor);
         } else if (obs.kind === 'block') {
-          renderRobTopBlock(ctx!, renderX, renderY, obs.w, obs.h, currentTime);
+          renderRobTopBlock(ctx!, renderX, renderY, obs.w, obs.h, currentTime, lvl.accentColor);
         } else if (obs.kind === 'pad') {
           renderRobTopPad(ctx!, renderX, obs.y, obs.w, obs.h, GROUND_Y, currentTime);
         } else if (obs.kind === 'orb') {
@@ -2290,23 +2967,19 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
         } else if (obs.kind === 'coin' && !obs.used) {
           renderRobTopCoin(ctx!, renderX + obs.w / 2, renderY + obs.h / 2, obs.w, currentTime);
         } else if (obs.kind === 'finish') {
-          renderRobTopFinish(ctx!, renderX, renderY, obs.w, obs.h, currentTime);
+          renderRobTopFinish(ctx!, renderX, renderY, obs.w, obs.h, currentTime, lvl.accentColor);
+        } else if (obs.kind === 'portal_ship') {
+          renderRobTopPortal(ctx!, renderX, renderY, obs.w, obs.h, 'ship', currentTime);
+        } else if (obs.kind === 'portal_cube') {
+          renderRobTopPortal(ctx!, renderX, renderY, obs.w, obs.h, 'cube', currentTime);
+        } else if (obs.kind === 'portal_wave') {
+          renderRobTopPortal(ctx!, renderX, renderY, obs.w, obs.h, 'wave', currentTime);
         } else if (obs.kind === 'billboard' && obs.photoUrl) {
-          renderRobTopBillboard(
-            ctx!,
-            renderX,
-            renderY,
-            obs.w,
-            obs.h,
-            obs.photoUrl,
-            obs.title || 'УЦЫШКА',
-            currentTime
-          );
+          renderRobTopBillboard(ctx!, renderX, renderY, obs.w, obs.h, obs.photoUrl);
         }
       }
 
       // 5. DRAW CUBE TRAIL (SHADOW GHOSTS FALLING BACKWARDS)
-      const activeSkin = skinRef.current;
       for (let i = cubeTrail.length - 1; i >= 0; i--) {
         const tr = cubeTrail[i]!;
         tr.alpha -= dt * 3.2;
@@ -2346,16 +3019,58 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
         ctx!.restore();
       }
 
-      // 6. DRAW ACTIVE CUBE
+      // 5.5 DRAW WAVE NEON LINE TRAIL (SOLID ZIG-ZAG LASER BEAM)
+      if (waveTrail.length > 1) {
+        ctx!.save();
+        ctx!.shadowColor = activeSkin.primaryColor || '#00f0ff';
+        ctx!.shadowBlur = 14;
+        ctx!.strokeStyle = activeSkin.primaryColor || '#00f0ff';
+        ctx!.lineWidth = 4;
+        ctx!.lineCap = 'round';
+        ctx!.lineJoin = 'round';
+
+        ctx!.beginPath();
+        let first = true;
+        for (const pt of waveTrail) {
+          const rx = pt.worldX - worldX;
+          const ry = GROUND_Y - pt.y;
+          if (first) {
+            ctx!.moveTo(rx, ry);
+            first = false;
+          } else {
+            ctx!.lineTo(rx, ry);
+          }
+        }
+        ctx!.stroke();
+
+        // Inner white-hot laser core
+        ctx!.shadowBlur = 0;
+        ctx!.strokeStyle = '#ffffff';
+        ctx!.lineWidth = 1.8;
+        ctx!.stroke();
+        ctx!.restore();
+      }
+
+      // 6. DRAW ACTIVE PLAYER (CUBE, SHIP OR WAVE)
       if (screenRef.current === 'playing' || screenRef.current === 'paused' || screenRef.current === 'menu') {
         const drawCubeX = screenRef.current === 'menu' ? 140 : cubeX;
         const drawCubeY = screenRef.current === 'menu' ? 0 : cubeY;
-        const drawRot = screenRef.current === 'menu' ? 0 : cubeRotation;
 
         ctx!.save();
-        ctx!.translate(drawCubeX + CUBE_SIZE / 2, GROUND_Y - drawCubeY - CUBE_SIZE / 2);
-        ctx!.rotate(drawRot);
-        renderCubeFace(ctx!, activeSkin, CUBE_SIZE);
+        if (playerMode === 'wave' && screenRef.current !== 'menu') {
+          const waveAngle = isHoldingRef.current ? -Math.PI / 4 : Math.PI / 4;
+          ctx!.translate(drawCubeX + CUBE_SIZE / 2, GROUND_Y - drawCubeY - CUBE_SIZE / 2);
+          renderRobTopWave(ctx!, activeSkin, waveAngle, currentTime);
+        } else if (playerMode === 'ship' && screenRef.current !== 'menu') {
+          ctx!.translate(drawCubeX + CUBE_SIZE / 2, GROUND_Y - drawCubeY - CUBE_SIZE / 2);
+          ctx!.rotate(shipPitch);
+          renderRobTopShip(ctx!, activeSkin, isHoldingRef.current, currentTime);
+        } else {
+          const drawRot = screenRef.current === 'menu' ? 0 : cubeRotation;
+          ctx!.translate(drawCubeX + CUBE_SIZE / 2, GROUND_Y - drawCubeY - CUBE_SIZE / 2);
+          ctx!.rotate(drawRot);
+          renderCubeFace(ctx!, activeSkin, CUBE_SIZE);
+        }
         ctx!.restore();
       }
 
