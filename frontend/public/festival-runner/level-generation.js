@@ -16,4 +16,9 @@ export function corridorAt(corridor,distance,random=Math.random){
   }
   return corridor.target===null?[corridor.lane]:[corridor.lane,corridor.target];
 }
-export function speedAt(distance){return Math.min(27,14+Math.max(0,distance)/170)}
+export function speedAt(distance){
+  // Progressive speed acceleration: starts at comfortable 14.5, picks up speed fast, caps at 34
+  const base = 14.5;
+  const boost = Math.pow(Math.max(0, distance), 0.52) * 0.65;
+  return Math.min(34, base + boost);
+}

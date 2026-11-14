@@ -1,0 +1,19 @@
+{
+  "name": "ОКЭИ: Новый Уровень — Фестиваль Игр",
+  "short_name": "ОКЭИ Фест",
+  "description": "Фестиваль компьютерных игр ОКЭИ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#120724",
+  "theme_color": "#120724",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/art/player-avatar.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

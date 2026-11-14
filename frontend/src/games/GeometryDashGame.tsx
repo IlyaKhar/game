@@ -1732,8 +1732,10 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
     let cubeTrail: { worldX: number; y: number; rot: number; alpha: number }[] = [];
     let trailTimer = 0;
     let bgHue = levelRef.current.bgHue;
+    let isDying = false;
 
     function resetLevel() {
+      isDying = false;
       worldX = 0;
       cubeY = 0;
       cubeVy = 0;
@@ -1874,21 +1876,30 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-    const onPointerDown = () => {
-      isHoldingRef.current = true;
-      doJump();
+    const targetSurface = containerRef.current || canvas;
+    const onPointerDown = (e?: Event) => {
+      if (screenRef.current === 'playing') {
+        if (e && 'button' in e && (e as MouseEvent).button !== 0) return;
+        isHoldingRef.current = true;
+        doJump();
+      }
     };
     const onPointerUp = () => {
       isHoldingRef.current = false;
     };
 
-    canvas.addEventListener('pointerdown', onPointerDown);
+    targetSurface.addEventListener('pointerdown', onPointerDown);
+    targetSurface.addEventListener('touchstart', onPointerDown, { passive: true });
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('touchend', onPointerUp);
 
     // ---------------------------------------------------------
     // PIXELFX DEATH EXPLOSION (HUGO DUPREZ PIXEL BLAST RECIPE)
     // ---------------------------------------------------------
     function die() {
+      if (isDying) return;
+      isDying = true;
+
       playCrashSound();
       const currentSkin = skinRef.current;
       const centerX = cubeX + CUBE_SIZE / 2;
@@ -1952,7 +1963,6 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
 
       stopBackgroundMusic();
       const finalPoints = Math.floor(worldX);
-      setAttempts((a) => a + 1);
       setScore(finalPoints);
       onGameOverRef.current(finalPoints);
 
@@ -2035,7 +2045,7 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
       }
 
       // 2. PHYSICS & COLLISION ENGINE
-      if (screenRef.current === 'playing') {
+      if (screenRef.current === 'playing' && !isDying) {
         worldX += lvl.speed * dt;
 
         if (isHoldingRef.current && onGround) {
@@ -2424,8 +2434,10 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
       window.removeEventListener('resize', onResize);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      canvas.removeEventListener('pointerdown', onPointerDown);
+      targetSurface.removeEventListener('pointerdown', onPointerDown);
+      targetSurface.removeEventListener('touchstart', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('touchend', onPointerUp);
       stopBackgroundMusic();
     };
   }, []);
@@ -2440,6 +2452,7 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
 
   const handleRestart = () => {
     playMenuClick();
+    setAttempts((a) => a + 1); // Clean +1 attempt per restart
     skinRef.current = CUBE_SKINS[selectedSkinIndex] || CUBE_SKINS[0]!;
     resetLevelRef.current();
     startBackgroundMusic();
@@ -2497,8 +2510,8 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative flex flex-1 flex-col items-center justify-center p-2 select-none sm:p-4">
-      <div className="neon-card-pink relative aspect-[900/450] w-full max-w-[940px] overflow-hidden rounded-3xl bg-[#090314] shadow-2xl">
+    <div ref={containerRef} className="relative flex flex-1 w-full h-full flex-col items-center justify-center select-none touch-none">
+      <div className="relative aspect-[900/450] max-h-full w-full max-w-[940px] overflow-hidden rounded-2xl bg-[#090314] shadow-2xl">
         <canvas ref={canvasRef} className="block h-full w-full cursor-pointer touch-none select-none" />
 
         {/* ========================================================
@@ -3030,7 +3043,7 @@ export const GeometryDashGame: React.FC<GeometryDashGameProps> = ({
                   className="flex min-h-[46px] items-center gap-2 rounded-full bg-gradient-to-r from-[#ff2e93] via-[#c026d3] to-[#00f0ff] px-7 py-2.5 font-display text-xs font-black text-white uppercase shadow-[0_0_20px_rgba(255,46,147,0.5)] transition hover:brightness-110 active:scale-95"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  ПОВТОРИТЬ (ПРОБЕЛ)
+                  ПОВТОРИТЬ
                 </button>
                 <button
                   type="button"

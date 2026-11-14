@@ -10,7 +10,7 @@ import {
   getPlayerToken,
   submitGameScore,
 } from './lib/api';
-import { FESTIVAL_GAMES, type GameId, type PlayerSummary } from './types/festival';
+import { FESTIVAL_GAMES, type GameId, type LeaderboardCategory, type PlayerSummary } from './types/festival';
 
 const ResultsScreen = React.lazy(() =>
   import('./components/ResultsScreen').then((m) => ({ default: m.ResultsScreen }))
@@ -38,7 +38,7 @@ type ViewState =
   | { kind: 'entry' }
   | { kind: 'hub' }
   | { kind: 'game'; gameId: GameId }
-  | { kind: 'results'; returnTo: 'entry' | 'hub' }
+  | { kind: 'results'; returnTo: 'entry' | 'hub'; initialCategory?: LeaderboardCategory }
   | { kind: 'admin'; returnTo: 'entry' | 'hub' };
 
 function getInitialView(): ViewState {
@@ -148,7 +148,7 @@ export function App() {
             player={player}
             onPlayGame={(gameId) => setView({ kind: 'game', gameId })}
             onBackToLogin={handleBackToLogin}
-            onOpenResults={() => setView({ kind: 'results', returnTo: 'hub' })}
+            onOpenResults={(category) => setView({ kind: 'results', returnTo: 'hub', initialCategory: category })}
             onSecretAdmin={openAdmin}
           />
         )}
@@ -156,6 +156,7 @@ export function App() {
         {view.kind === 'results' && (
           <ResultsScreen
             currentPlayer={player}
+            initialCategory={view.initialCategory}
             onBack={() => setView({ kind: view.returnTo === 'hub' && player ? 'hub' : 'entry' })}
           />
         )}

@@ -33,7 +33,10 @@ export const BrandHeader: React.FC<BrandHeaderProps> = ({
   };
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 px-4 pt-4 sm:px-8 sm:pt-6 lg:px-10 lg:pt-7">
+    <header
+      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}
+      className="relative flex flex-wrap items-start justify-between gap-3 px-3 sm:gap-4 sm:px-8 sm:pt-6 lg:px-10 lg:pt-7"
+    >
       {/* Top-Left Festival Title Lockup */}
       <div className="relative select-none -rotate-2 pt-1">
         <div className="flex items-center gap-2.5 sm:gap-4 lg:gap-5">
@@ -94,15 +97,15 @@ export const BrandHeader: React.FC<BrandHeaderProps> = ({
       </div>
 
       {/* Top-Right Date Pill & Active Student HUD */}
-      <div className="flex flex-col items-end gap-2.5">
-        <div className="rotate-2 rounded-2xl border-2 border-[#ff47b3] bg-[#240a47]/90 px-4 py-2 shadow-[0_0_20px_rgba(255,71,179,0.5)] backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <Calendar className="h-6 w-6 text-[#f472b6] sm:h-7 sm:w-7" aria-hidden="true" />
+      <div className="flex w-full flex-col items-center sm:w-auto sm:items-end gap-2.5">
+        <div className="rotate-2 rounded-xl sm:rounded-2xl border-2 border-[#ff47b3] bg-[#240a47]/90 px-2.5 py-1 sm:px-4 sm:py-2 shadow-[0_0_20px_rgba(255,71,179,0.5)] backdrop-blur-md absolute top-3 right-3 sm:static z-20 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Calendar className="h-5 w-5 text-[#f472b6] sm:h-7 sm:w-7" aria-hidden="true" />
             <div className="leading-tight">
-              <div className="font-display text-lg font-black italic tracking-tight text-white sm:text-2xl">
+              <div className="font-display text-sm font-black italic tracking-tight text-white sm:text-2xl">
                 16–27
               </div>
-              <div className="font-display text-[10px] font-extrabold tracking-widest text-fuchsia-200 uppercase sm:text-xs">
+              <div className="font-display text-[9px] font-extrabold tracking-widest text-fuchsia-200 uppercase sm:text-xs">
                 НОЯБРЯ
               </div>
             </div>
@@ -114,7 +117,7 @@ export const BrandHeader: React.FC<BrandHeaderProps> = ({
             type="button"
             onClick={onOpenResults}
             disabled={!onOpenResults}
-            className="group relative flex max-w-[340px] items-center gap-3 overflow-hidden rounded-2xl border-2 border-[#ff47b3]/80 bg-gradient-to-br from-[#1b0838]/95 via-[#13052b]/95 to-[#240a47]/95 p-2.5 pr-4 text-left shadow-[0_8px_28px_rgba(10,3,24,0.85),0_0_22px_rgba(255,71,179,0.32)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#ff66d9] hover:shadow-[0_10px_32px_rgba(10,3,24,0.9),0_0_26px_rgba(255,71,179,0.55)] active:scale-[0.98] sm:max-w-[390px]"
+            className="group relative flex w-full max-w-[360px] items-center gap-3 overflow-hidden rounded-2xl border-2 border-[#ff47b3]/80 bg-gradient-to-br from-[#1b0838]/95 via-[#13052b]/95 to-[#240a47]/95 p-2.5 pr-4 text-left shadow-[0_8px_28px_rgba(10,3,24,0.85),0_0_22px_rgba(255,71,179,0.32)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#ff66d9] hover:shadow-[0_10px_32px_rgba(10,3,24,0.9),0_0_26px_rgba(255,71,179,0.55)] active:scale-[0.98] sm:max-w-[390px]"
           >
             {/* Subtle top neon highlight line */}
             <div

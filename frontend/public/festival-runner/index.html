@@ -1,3 +1,40 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"><meta name="theme-color" content="#17132f"><title>Festival Runner</title><link rel="stylesheet" href="style.css"><script type="importmap">{"imports":{"three":"./three.module.js"}}</script></head>
-<body><main id="game" aria-label="Festival Runner"><div id="world"></div><div class="hud"><div class="stats"><div class="pill"><span class="label">СЧЁТ</span><strong id="score">0</strong></div><div class="pill coins"><span>●</span><strong id="coins">0</strong></div></div><button id="pause" class="icon" aria-label="Пауза">Ⅱ</button></div><div id="notice" aria-live="polite"></div><div id="overlay" class="overlay"><section class="panel"><div class="eyebrow">ОКЭИ · НОВЫЙ УРОВЕНЬ</div><h1>FESTIVAL<br><em>RUNNER</em></h1><p id="description">Три дорожки, один забег. Собирай монеты и уклоняйся от препятствий!</p><div id="result" class="result" hidden></div><div class="controls"><span>← → сменить полосу</span><span>↑ прыжок · ↓ подкат</span><span>На телефоне — свайпы</span></div><button id="start" class="primary">ИГРАТЬ <span>↗</span></button><small>Первый прототип · управление и оформление можно изменить</small></section></div><div class="bottom-hint">СВАЙПАЙ, ЧТОБЫ УПРАВЛЯТЬ</div></main><script type="module" src="game.js"></script></body></html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#15062d">
+  <title>Subway Surfers Fest</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+</head>
+<body>
+<main id="game" aria-label="Subway Surfers Festival">
+  <div id="world"></div>
+  <div class="hud">
+    <div class="stats">
+      <div class="pill">
+        <span class="label">СЧЁТ</span>
+        <strong id="score">0</strong>
+      </div>
+      <div class="pill coins">
+        <span>●</span>
+        <strong id="coins">0</strong>
+      </div>
+    </div>
+    <button id="pause" class="icon" aria-label="Пауза">Ⅱ</button>
+  </div>
+  <div id="notice" aria-live="polite"></div>
+  <div id="overlay" class="overlay">
+    <section class="panel">
+      <div class="badge-tag">ФЕСТИВАЛЬ ИГР ОКЭИ</div>
+      <h1 class="game-title">SUBWAY<br><span class="highlight">SURFERS</span></h1>
+      <p id="description">Три полосы, поезда и монеты. Уклоняйся от преград и ставь рекорд фестиваля!</p>
+      <div id="result" class="result" hidden></div>
+      <button id="start" class="primary">ПОГНАЛИ!</button>
+    </section>
+  </div>
+</main>
+<script type="module" src="game.js"></script>
+</body>
+</html>

@@ -17,6 +17,8 @@ interface Obstacle3D {
   h: number;
   kind: 'cactus' | 'cactus_cluster' | 'stone' | 'ptero';
   active: boolean;
+  wingL?: THREE.Mesh;
+  wingR?: THREE.Mesh;
 }
 
 interface Coin3D {
@@ -56,6 +58,69 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
   const [score, setScore] = useState(0);
   const [coinsCount, setCoinsCount] = useState(0);
   const [sessionId, setSessionId] = useState(0);
+  const [isLandscape, setIsLandscape] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
+  );
+  const [isTouchDevice, setIsTouchDevice] = useState(() =>
+    typeof window !== 'undefined'
+      ? 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)
+      : false
+  );
+
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isSwipingDuck = useRef(false);
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+      setIsTouchDevice('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
+
+  const handleViewportTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+
+    // Instant 0ms response: jump the exact millisecond the finger hits the screen!
+    if (gameState === 'ready') {
+      startGameRef.current();
+    } else if (gameState === 'playing') {
+      jumpActionRef.current();
+    }
+  };
+
+  const handleViewportTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const dy = touch.clientY - touchStartPos.current.y;
+    const dx = touch.clientX - touchStartPos.current.x;
+
+    if (dy > 24 && Math.abs(dy) > Math.abs(dx)) {
+      if (!isSwipingDuck.current) {
+        isSwipingDuck.current = true;
+        duckActionRef.current(true);
+      }
+    } else if (dy < -24 && Math.abs(dy) > Math.abs(dx)) {
+      jumpActionRef.current();
+      touchStartPos.current = null;
+    }
+  };
+
+  const handleViewportTouchEnd = () => {
+    if (isSwipingDuck.current) {
+      isSwipingDuck.current = false;
+      duckActionRef.current(false);
+    }
+    touchStartPos.current = null;
+  };
 
   const onGameOverRef = useRef(onGameOver);
   onGameOverRef.current = onGameOver;
@@ -796,7 +861,7 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
       runCycle: 0,
     };
 
-    let worldSpeed = 7.5;
+    let worldSpeed = 6.2;
     let distanceTraveled = 0;
     let bonusScore = 0;
     let spawnTimer = 1.4;
@@ -834,6 +899,9 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
       let y = 0;
       let grp: THREE.Group;
 
+      let wingL: THREE.Mesh | undefined;
+      let wingR: THREE.Mesh | undefined;
+
       if (rand < 0.42) {
         // Single Saguaro Cactus
         kind = 'cactus';
@@ -853,44 +921,70 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
         h = 0.65;
         grp = buildStoneBlock();
       } else {
-        // Flying Neon Pterodactyl (requires ducking or precise jump)
+        // Flying Neon Pterodactyl / Rocket (flies at chest/head level: MUST DUCK to slide under!)
         kind = 'ptero';
-        w = 0.75;
-        h = 0.5;
-        y = 1.55;
+        w = 0.85;
+        h = 0.55;
+        y = 1.05; // Raised to 1.05 so standing hits head (1.4m), while ducking (0.7m) glides under with clear headroom!
         const pObj = buildPtero();
         grp = pObj.grp;
+        wingL = pObj.wingL;
+        wingR = pObj.wingR;
       }
 
       grp.position.set(13.5, y, 0);
       scene.add(grp);
-      obstacles.push({ group: grp, x: 13.5, y, w, h, kind, active: true });
+      obstacles.push({ group: grp, x: 13.5, y, w, h, kind, active: true, wingL, wingR });
+
+      // Cleanse coin spawn collision: if any coin was just at x=13.5, elevate it safely above the new obstacle
+      for (const c of coins) {
+        if (c.active && Math.abs(c.x - 13.5) < 1.8 && c.y < 1.9) {
+          c.y = Math.max(2.25, y + h + 0.65);
+          c.mesh.position.y = c.y;
+        }
+      }
     };
 
     // Spawn Single Coin
     const spawnSingleCoin = (x: number, y: number) => {
+      // Guaranteed safety check: never place a low coin inside or near an obstacle
+      const nearObs = obstacles.find((ob) => ob.active && Math.abs(ob.x - x) < 1.6);
+      let safeY = y;
+      if (nearObs) {
+        safeY = Math.max(2.2, nearObs.y + nearObs.h + 0.65);
+      }
       const { grp, halo, sparkle } = buildCoin();
-      grp.position.set(x, y, 0);
+      grp.position.set(x, safeY, 0);
       scene.add(grp);
-      coins.push({ mesh: grp, halo, sparkle, x, y, active: true });
+      coins.push({ mesh: grp, halo, sparkle, x, y: safeY, active: true });
     };
 
-    // Spawn Coin Formations (Single, Lines, and Jump Arcs)
+    // Spawn Coin Formations (Guaranteed Obstacle-Free on ground, or safely elevated on jump arcs)
     const spawnCoin = () => {
+      // Check if an obstacle is currently in or approaching the spawn zone
+      const nearObs = obstacles.find((ob) => ob.active && Math.abs(ob.x - 13.5) < 2.6);
+      if (nearObs) {
+        // Obstacle is present: place a single high reward coin directly at jump apex ABOVE the obstacle
+        const safeY = Math.max(2.25, nearObs.y + nearObs.h + 0.65);
+        spawnSingleCoin(nearObs.x, safeY);
+        return;
+      }
+
+      // Ground is completely clear: safe to spawn ground patterns
       const pattern = Math.random();
       if (pattern < 0.45) {
         // Single coin (low or high)
-        const high = Math.random() < 0.5;
-        spawnSingleCoin(13.5, high ? 1.7 : 0.75);
+        const high = Math.random() < 0.4;
+        spawnSingleCoin(13.5, high ? 1.65 : 0.75);
       } else if (pattern < 0.75) {
         // Line of 3 coins on the ground
         for (let j = 0; j < 3; j++) {
-          spawnSingleCoin(13.5 + j * 0.9, 0.75);
+          spawnSingleCoin(13.5 + j * 0.95, 0.75);
         }
       } else {
-        // Jump Arc of 3 coins (jump over obstacle and collect apex!)
+        // Jump Arc of 3 coins over empty ground
         spawnSingleCoin(13.5, 0.75);
-        spawnSingleCoin(14.4, 1.8);
+        spawnSingleCoin(14.4, 1.7);
         spawnSingleCoin(15.3, 0.75);
       }
     };
@@ -982,9 +1076,9 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
           collegeGroup.position.x = 22;
         }
 
-        // Increase speed gradually like the classic dino runner
-        worldSpeed = Math.min(17.5, 7.8 + distanceTraveled * 0.014);
-        distanceTraveled += worldSpeed * dt * 3.8;
+        // Increase speed smoothly and gradually like the classic dino runner
+        worldSpeed = Math.min(13.8, 6.2 + Math.sqrt(Math.max(0, distanceTraveled)) * 0.22);
+        distanceTraveled += worldSpeed * dt * 3.4;
 
         const currentScore = Math.floor(distanceTraveled) + bonusScore;
         if (scoreBadgeRef.current) {
@@ -1043,8 +1137,8 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
         spawnTimer -= dt;
         if (spawnTimer <= 0) {
           spawnObstacle();
-          const minInterval = Math.max(0.72, 1.85 - worldSpeed * 0.065);
-          spawnTimer = minInterval + Math.random() * 0.85;
+          const minInterval = Math.max(0.85, 2.05 - worldSpeed * 0.08);
+          spawnTimer = minInterval + Math.random() * 0.9;
         }
 
         // Spawning Coins
@@ -1065,6 +1159,14 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
           const ob = obstacles[i]!;
           ob.x -= worldSpeed * dt;
           ob.group.position.x = ob.x;
+
+          // Flapping wing animation for flying neon pterodactyl
+          if (ob.wingL && ob.wingR) {
+            const flap = Math.sin(timestamp * 0.016 + i) * 0.55;
+            ob.wingL.rotation.x = flap;
+            ob.wingR.rotation.x = -flap;
+            ob.group.position.y = ob.y + Math.sin(timestamp * 0.007 + i) * 0.035;
+          }
 
           // Check AABB Box overlap in 3D
           const obL = ob.x - ob.w / 2 + pad;
@@ -1119,10 +1221,10 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
           (c.halo.material as THREE.MeshBasicMaterial).opacity =
             0.4 + Math.sin(timestamp * 0.008 + i) * 0.22;
 
-          // Pickup Distance
-          const dx = dinoX - c.x;
-          const dy = dinoY + dinoH * 0.5 - c.mesh.position.y;
-          if (dx * dx + dy * dy < 0.72) {
+          // Generous bounding column check so jumping over or through coins reliably collects!
+          const inX = Math.abs(c.x - dinoX) < 0.85;
+          const inY = c.mesh.position.y >= dinoY - 0.45 && c.mesh.position.y <= dinoY + dinoH + 0.65;
+          if (inX && inY) {
             scene.remove(c.mesh);
             coins.splice(i, 1);
             bonusScore += 25;
@@ -1201,10 +1303,14 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
   };
 
   return (
-    <div className="relative flex flex-1 w-full flex-col items-center justify-between p-2 select-none sm:p-4 touch-none">
+    <div className="relative flex flex-1 w-full h-full flex-col items-center justify-between p-1 sm:p-2 select-none touch-none">
       {/* 3D WebGL Canvas Container */}
       <div
         ref={mountRef}
+        onTouchStart={handleViewportTouchStart}
+        onTouchMove={handleViewportTouchMove}
+        onTouchEnd={handleViewportTouchEnd}
+        onTouchCancel={handleViewportTouchEnd}
         onClick={() => {
           if (gameState === 'ready') {
             startGameRef.current();
@@ -1212,7 +1318,7 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
             jumpActionRef.current();
           }
         }}
-        className="relative h-[clamp(320px,64dvh,600px)] w-full overflow-hidden rounded-3xl border-2 border-[#ff47b3]/65 bg-[#12042b] shadow-[0_0_36px_rgba(255,46,147,0.35)] cursor-pointer"
+        className="relative flex-1 w-full h-full min-h-[340px] overflow-hidden rounded-2xl cursor-pointer"
       >
         {/* Top-Left Live HUD (Score & Coins) */}
         <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2">
@@ -1286,13 +1392,13 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
               ИГРАТЬ
             </button>
 
-            {/* Bottom Keyboard Hint Bar */}
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold text-fuchsia-200/80">
-              <span className="rounded-lg border border-fuchsia-400/40 bg-fuchsia-950/60 px-2.5 py-1">
-                ПРОБЕЛ — ПРЫЖОК
+            {/* Bottom Keyboard & Touch Hint Bar */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-fuchsia-200/90">
+              <span className="rounded-lg border border-fuchsia-400/40 bg-fuchsia-950/70 px-2.5 py-1">
+                {isTouchDevice ? 'ТАП / СВАЙП ↑ — ПРЫЖОК' : 'ПРОБЕЛ — ПРЫЖОК'}
               </span>
-              <span className="rounded-lg border border-indigo-400/40 bg-indigo-950/60 px-2.5 py-1">
-                ↓ — ПРИГНУТЬСЯ
+              <span className="rounded-lg border border-indigo-400/40 bg-indigo-950/70 px-2.5 py-1">
+                {isTouchDevice ? 'СВАЙП ↓ — ПРИГНУТЬСЯ' : '↓ — ПРИГНУТЬСЯ'}
               </span>
             </div>
           </div>
@@ -1337,41 +1443,91 @@ export const DinoGame: React.FC<DinoGameProps> = ({ onGameOver, bestScore, isNew
             </button>
           </div>
         )}
+
+        {/* Floating Gamepad Controls for Landscape Mobile */}
+        {isTouchDevice && isLandscape && gameState === 'playing' && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex items-center justify-between px-3 sm:px-6">
+            <button
+              type="button"
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                duckActionRef.current(true);
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                duckActionRef.current(false);
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                duckActionRef.current(true);
+              }}
+              onMouseUp={(e) => {
+                e.stopPropagation();
+                duckActionRef.current(false);
+              }}
+              className="pointer-events-auto flex h-14 w-24 items-center justify-center gap-1.5 rounded-2xl border-2 border-indigo-400/80 bg-[#1e0e3d]/90 font-display text-xs font-black italic text-indigo-100 uppercase shadow-[0_0_20px_rgba(99,102,241,0.6)] backdrop-blur-md active:bg-indigo-600 active:scale-95 transition"
+            >
+              <ArrowDown className="h-4 w-4" />
+              НИЗ
+            </button>
+
+            <button
+              type="button"
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                jumpActionRef.current();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpActionRef.current();
+              }}
+              className="pointer-events-auto flex h-14 w-28 items-center justify-center gap-1.5 rounded-2xl border-2 border-[#ff47b3] bg-gradient-to-r from-[#ff2e93]/90 to-[#c026d3]/90 font-display text-xs font-black italic text-white uppercase shadow-[0_0_24px_rgba(255,46,147,0.8)] backdrop-blur-md active:scale-95 transition"
+            >
+              <ArrowUp className="h-4 w-4" />
+              ПРЫЖОК
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Mobile Touch Controls (Thumb Buttons on Narrow Screens) */}
-      <div className="mt-2.5 flex w-full max-w-[440px] items-center justify-between gap-3 sm:hidden">
-        <button
-          type="button"
-          onTouchStart={(e) => {
-            e.preventDefault();
-            duckActionRef.current(true);
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            duckActionRef.current(false);
-          }}
-          onMouseDown={() => duckActionRef.current(true)}
-          onMouseUp={() => duckActionRef.current(false)}
-          className="flex h-13 flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 border-indigo-400/60 bg-[#1e0e3d]/90 font-display text-xs font-black italic text-indigo-100 uppercase shadow-[0_0_14px_rgba(99,102,241,0.35)] active:bg-indigo-600 active:text-white transition"
-        >
-          <ArrowDown className="h-4 w-4" />
-          ПРИГНУТЬСЯ
-        </button>
+      {/* Mobile Touch Controls for Portrait Mode */}
+      {isTouchDevice && !isLandscape && gameState === 'playing' && (
+        <div className="mt-2 flex w-full max-w-[440px] items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            onTouchStart={(e) => {
+              e.preventDefault();
+              duckActionRef.current(true);
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              duckActionRef.current(false);
+            }}
+            onMouseDown={() => duckActionRef.current(true)}
+            onMouseUp={() => duckActionRef.current(false)}
+            className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 border-indigo-400/60 bg-[#1e0e3d]/90 font-display text-xs font-black italic text-indigo-100 uppercase shadow-[0_0_14px_rgba(99,102,241,0.35)] active:bg-indigo-600 active:text-white transition"
+          >
+            <ArrowDown className="h-4 w-4" />
+            ПРИГНУТЬСЯ
+          </button>
 
-        <button
-          type="button"
-          onTouchStart={(e) => {
-            e.preventDefault();
-            jumpActionRef.current();
-          }}
-          onClick={() => jumpActionRef.current()}
-          className="flex h-13 flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 border-[#ff47b3]/70 bg-gradient-to-r from-[#ff2e93] to-[#c026d3] font-display text-xs font-black italic text-white uppercase shadow-[0_0_18px_rgba(255,46,147,0.55)] active:scale-95 transition"
-        >
-          <ArrowUp className="h-4 w-4" />
-          ПРЫЖОК
-        </button>
-      </div>
+          <button
+            type="button"
+            onTouchStart={(e) => {
+              e.preventDefault();
+              jumpActionRef.current();
+            }}
+            onClick={() => jumpActionRef.current()}
+            className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 border-[#ff47b3]/70 bg-gradient-to-r from-[#ff2e93] to-[#c026d3] font-display text-xs font-black italic text-white uppercase shadow-[0_0_18px_rgba(255,46,147,0.55)] active:scale-95 transition"
+          >
+            <ArrowUp className="h-4 w-4" />
+            ПРЫЖОК
+          </button>
+        </div>
+      )}
     </div>
   );
 };

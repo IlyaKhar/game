@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Play, Trophy } from 'lucide-react';
-import { FESTIVAL_GAMES, type GameId, type PlayerSummary } from '../types/festival';
+import { FESTIVAL_GAMES, type GameId, type LeaderboardCategory, type PlayerSummary } from '../types/festival';
 import { BrandHeader } from './BrandHeader';
 import { SloganBadge } from './SloganBadge';
 import { GameCardArtwork } from './art/GameCardArtwork';
@@ -9,7 +9,7 @@ interface HubScreenProps {
   player: PlayerSummary;
   onPlayGame: (gameId: GameId) => void;
   onBackToLogin: () => void;
-  onOpenResults: () => void;
+  onOpenResults: (category?: LeaderboardCategory) => void;
   onSecretAdmin: () => void;
 }
 
@@ -54,10 +54,19 @@ export const HubScreen: React.FC<HubScreenProps> = ({
                   aria-hidden="true"
                 />
 
-                {/* Personal Best Pill */}
-                <div className="absolute right-3 top-3 rounded-full border border-white/25 bg-[#120626]/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-300 backdrop-blur-md">
-                  {best > 0 ? `Рекорд: ${best}` : '0 pts'}
-                </div>
+                {/* Personal Best Pill - clickable to open that game's leaderboard */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenResults(game.id);
+                  }}
+                  title={`Посмотреть топ игроков в ${game.title}`}
+                  className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/25 bg-[#120626]/85 px-2.5 py-0.5 text-[11px] font-bold text-amber-300 backdrop-blur-md transition hover:border-amber-300 hover:bg-[#200840] hover:scale-105 active:scale-95"
+                >
+                  <Trophy className="h-3 w-3 text-amber-300" />
+                  <span>{best > 0 ? `Рекорд: ${best}` : '0 pts'}</span>
+                </button>
 
                 {/* Floating Title & Play Button over Artwork */}
                 <div className="relative flex h-full flex-col items-center justify-end px-3 pb-4 text-center">
@@ -101,7 +110,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({
 
           <button
             type="button"
-            onClick={onOpenResults}
+            onClick={() => onOpenResults('overall')}
             className="flex min-h-[44px] items-center gap-2 rounded-full border-2 border-indigo-400/85 bg-gradient-to-r from-[#1f0d47]/95 to-[#2d1261]/95 px-5 py-2 font-display text-xs font-black italic tracking-wider text-white uppercase shadow-[0_0_18px_rgba(99,102,241,0.45)] transition hover:border-amber-300/80 hover:brightness-110 active:scale-95 sm:text-sm"
           >
             <Trophy className="h-4 w-4 text-amber-300" aria-hidden="true" />

@@ -169,6 +169,7 @@ func backfillAndDeduplicatePlayers(db *gorm.DB) error {
 }
 
 // FindOrCreatePlayer looks up a player case-insensitively (Unicode-safe) by full name and group, creating one if absent.
+// If an existing player matches the full name, that existing account is returned (updating the group if changed).
 func (s *Store) FindOrCreatePlayer(ctx context.Context, fullName, groupName string) (domain.Player, error) {
 	key := MakePlayerKey(fullName, groupName)
 	var player domain.Player
@@ -180,6 +181,25 @@ func (s *Store) FindOrCreatePlayer(ctx context.Context, fullName, groupName stri
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return domain.Player{}, err
+	}
+
+	// Returning students typing their full name should always log back into their existing account.
+	// Since normalized_key is constructed in Go as "norm(fullName)|norm(groupName)", searching by
+	// "norm(fullName)|%" is Unicode-safe across all SQL dialects (including SQLite and Postgres).
+	normName := strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(fullName)), " "))
+	var existingByName domain.Player
+	if err := s.db.WithContext(ctx).
+		Where("normalized_key LIKE ?", normName+"|%").
+		First(&existingByName).Error; err == nil {
+		if groupName != "" && existingByName.GroupName != groupName {
+			_ = s.db.WithContext(ctx).Model(&existingByName).Updates(map[string]any{
+				"group_name":     groupName,
+				"normalized_key": key,
+			}).Error
+			existingByName.GroupName = groupName
+			existingByName.NormalizedKey = key
+		}
+		return existingByName, nil
 	}
 
 	player = domain.Player{

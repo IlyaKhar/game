@@ -27,7 +27,7 @@ export const FestivalRunnerGame: React.FC<FestivalRunnerGameProps> = ({ onGameOv
       ref={frameRef}
       title="Festival Runner"
       src={`${import.meta.env.BASE_URL}festival-runner/index.html`}
-      className="min-h-[440px] w-full flex-1 border-0"
+      className="h-full min-h-[220px] w-full flex-1 border-0 touch-none"
       allow="fullscreen"
     />
   );

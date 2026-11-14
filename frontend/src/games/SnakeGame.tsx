@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw, Trophy } from 'lucide-react';
+import { RotateCcw, Trophy } from 'lucide-react';
 import { sfx } from '../lib/sound';
 
 interface SnakeGameProps {
@@ -18,12 +18,12 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
   bestScore,
   isNewRecord,
 }) => {
+  const outerWrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreBadgeRef = useRef<HTMLSpanElement>(null);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [sessionId, setSessionId] = useState(0);
-
   const onGameOverRef = useRef(onGameOver);
   onGameOverRef.current = onGameOver;
 
@@ -44,21 +44,24 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.domElement.style.width = '100%';
-    renderer.domElement.style.height = '100%';
-    renderer.domElement.style.display = 'block';
-    container.appendChild(renderer.domElement);
+    const domEl = renderer.domElement;
+    domEl.style.width = '100%';
+    domEl.style.height = '100%';
+    domEl.style.display = 'block';
+    container.appendChild(domEl);
 
     function onResize() {
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const w = Math.max(rect.width, 320);
-      const h = Math.max(rect.height, 220);
+      const w = Math.round(rect.width) || 320;
+      const h = Math.round(rect.height) || 320;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(w, h, false);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     }
+    const ro = new ResizeObserver(() => onResize());
+    ro.observe(container);
     window.addEventListener('resize', onResize);
     onResize();
 
@@ -310,27 +313,44 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
     };
     window.addEventListener('keydown', onKeyDown);
 
-    // Touch Swipes
+    // Touch Swipes with Instant TouchMove Turn Detection
     let touchStart: { x: number; y: number } | null = null;
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (t) touchStart = { x: t.clientX, y: t.clientY };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t || !touchStart) return;
+      const dx = t.clientX - touchStart.x;
+      const dy = t.clientY - touchStart.y;
+      if (Math.abs(dx) > 16 || Math.abs(dy) > 16) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          handleInput(dx > 0 ? 1 : -1, 0);
+        } else {
+          handleInput(0, dy > 0 ? 1 : -1);
+        }
+        touchStart = { x: t.clientX, y: t.clientY };
+      }
     };
     const onTouchEnd = (e: TouchEvent) => {
       const t = e.changedTouches[0];
       if (!t || !touchStart) return;
       const dx = t.clientX - touchStart.x;
       const dy = t.clientY - touchStart.y;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (Math.abs(dx) > 20) handleInput(dx > 0 ? 1 : -1, 0);
-      } else {
-        if (Math.abs(dy) > 20) handleInput(0, dy > 0 ? 1 : -1);
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          handleInput(dx > 0 ? 1 : -1, 0);
+        } else {
+          handleInput(0, dy > 0 ? 1 : -1);
+        }
       }
       touchStart = null;
     };
-    const domEl = renderer.domElement;
-    domEl.addEventListener('touchstart', onTouchStart, { passive: true });
-    domEl.addEventListener('touchend', onTouchEnd, { passive: true });
+    const touchSurface = outerWrapperRef.current || container;
+    touchSurface.addEventListener('touchstart', onTouchStart, { passive: true });
+    touchSurface.addEventListener('touchmove', onTouchMove, { passive: true });
+    touchSurface.addEventListener('touchend', onTouchEnd, { passive: true });
 
     function initGame() {
       snakeMeshes.forEach((m) => scene.remove(m));
@@ -471,10 +491,12 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
 
     return () => {
       cancelAnimationFrame(rafId);
+      ro.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onResize);
-      domEl.removeEventListener('touchstart', onTouchStart);
-      domEl.removeEventListener('touchend', onTouchEnd);
+      touchSurface.removeEventListener('touchstart', onTouchStart);
+      touchSurface.removeEventListener('touchmove', onTouchMove);
+      touchSurface.removeEventListener('touchend', onTouchEnd);
 
       snakeMeshes.forEach((m) => scene.remove(m));
       particles.forEach((p) => {
@@ -495,11 +517,14 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col">
+    <div
+      ref={outerWrapperRef}
+      className="relative flex h-full w-full flex-1 flex-col items-center justify-center select-none touch-none p-2 sm:p-4"
+    >
       {/* 3D WebGL Canvas */}
       <div
         ref={containerRef}
-        className="relative aspect-[4/3] w-full flex-1 overflow-hidden rounded-2xl border border-indigo-400/35 bg-[#0b0e1a] shadow-[0_0_32px_rgba(99,102,241,0.28)] sm:aspect-[16/10]"
+        className="relative aspect-square w-full max-w-[340px] sm:max-w-[420px] max-h-[54dvh] sm:max-h-[62dvh] mx-auto my-auto overflow-hidden rounded-2xl border border-indigo-400/40 bg-[#0b0e1a] shadow-[0_0_32px_rgba(99,102,241,0.28)]"
       >
         {/* Live Score Badge (Direct DOM update - zero re-renders/zero lag) */}
         <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-xl border border-white/10 bg-[#0e111ce0] px-3.5 py-1.5 backdrop-blur-md">
@@ -547,44 +572,6 @@ export const SnakeGame: React.FC<SnakeGameProps> = ({
             </button>
           </div>
         )}
-      </div>
-
-      {/* Mobile Virtual D-Pad */}
-      <div className="mt-3 flex flex-col items-center gap-1.5 sm:hidden">
-        <button
-          type="button"
-          onClick={() => handleInputRef.current(0, -1)}
-          aria-label="Вверх"
-          className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </button>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => handleInputRef.current(-1, 0)}
-            aria-label="Влево"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleInputRef.current(0, 1)}
-            aria-label="Вниз"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
-          >
-            <ArrowDown className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleInputRef.current(1, 0)}
-            aria-label="Вправо"
-            className="flex h-12 w-16 items-center justify-center rounded-xl border border-white/15 bg-[#1a0e35] text-white active:bg-[#38bdf8] active:text-black transition"
-          >
-            <ArrowRight className="h-5 w-5" />
-          </button>
-        </div>
       </div>
     </div>
   );

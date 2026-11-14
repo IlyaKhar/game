@@ -21,3 +21,14 @@ backend/data/
 npm-debug.log*
 IMG_*.JPG
 IMG_*.jpg
+IMG_*.heic
+IMG_*.HEIC
+*.heic
+*.HEIC
+
+# Local reports & user documents
+*.docx
+report_assets/
+report_*.py
+build_full_report.py
+generate_diagrams.py

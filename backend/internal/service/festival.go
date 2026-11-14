@@ -78,12 +78,12 @@ func (s *FestivalService) Enter(ctx context.Context, req domain.EnterRequest) (s
 	}
 
 	if len([]rune(groupName)) < 2 || len([]rune(groupName)) > 20 {
-		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите корректную группу (например, ИСП-21)", domain.ErrInvalidInput)
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: укажите корректную группу (например, 3ВБ2)", domain.ErrInvalidInput)
 	}
 
 	for _, r := range groupName {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
-			return "", domain.PlayerSummary{}, fmt.Errorf("%w: название группы может содержать только буквы, цифры и дефис", domain.ErrInvalidInput)
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '(' && r != ')' && r != ' ' {
+			return "", domain.PlayerSummary{}, fmt.Errorf("%w: название группы может содержать только буквы, цифры, дефис, пробел и скобки", domain.ErrInvalidInput)
 		}
 	}
 

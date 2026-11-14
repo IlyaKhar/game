@@ -148,7 +148,13 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
     clearRows: Set<number>;
     clearCols: Set<number>;
     invalidHoverSet: Set<string>;
-    raycastAt: (clientX: number, clientY: number, piece: Piece, pointerType: string) => { r: number; c: number } | null;
+    raycastAt: (
+      clientX: number,
+      clientY: number,
+      piece: Piece,
+      pointerType: string,
+      isTap?: boolean
+    ) => { r: number; c: number } | null;
     spawnBurst: (cells: { r: number; c: number; color: string }[]) => void;
   }>({
     grid: createEmptyGrid(),
@@ -263,10 +269,11 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
       const h = Math.max(Math.round(rect.height), 240);
       const aspect = w / h;
       camera.aspect = aspect;
-      // Scale distance smoothly on narrow portrait screens so all 8x8 columns fit with breathing room
-      const fitScale = aspect < 1.1 ? Math.min(1.72, 1.12 / Math.max(aspect, 0.56)) : 1.0;
-      camera.position.set(0, 12.2 * fitScale, 8.6 * fitScale);
-      camera.lookAt(0, 0.05, 0.25);
+      // Straighter, less steep 3D camera angle (~10-11 degrees tilt instead of 35 degrees)
+      // makes the 8x8 grid look clean, square, and easy to place blocks on, while retaining 3D block bevels
+      const fitScale = aspect < 1.1 ? Math.min(1.68, 1.12 / Math.max(aspect, 0.56)) : 1.0;
+      camera.position.set(0, 15.2 * fitScale, 2.6 * fitScale);
+      camera.lookAt(0, 0, 0.15);
       camera.updateProjectionMatrix();
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       // updateStyle=false prevents Three.js from setting inline px height that causes layout feedback loops
@@ -459,13 +466,15 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
       clientX: number,
       clientY: number,
       piece: Piece,
-      pointerType: string
+      pointerType: string,
+      isTap = false
     ): { r: number; c: number } | null => {
       const rect = renderer.domElement.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
 
-      // Lift touch target slightly upward so thumb does not hide target cells
-      const liftPx = pointerType === 'touch' ? 68 : 12;
+      // When dragging on touch, lift target upward so thumb does not obscure target placement
+      // On direct tap, keep lift 0 so the tapped cell is exactly hit
+      const liftPx = isTap ? 0 : pointerType === 'touch' ? 54 : 6;
       const sx = clientX;
       const sy = clientY - liftPx;
 
@@ -476,8 +485,8 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
       const hit = raycaster.ray.intersectPlane(boardPlane, hitPoint);
       if (!hit) return null;
 
-      // Check generously near the board bounds
-      if (Math.abs(hitPoint.x) > HALF_SPAN + 1.2 || Math.abs(hitPoint.z) > HALF_SPAN + 1.2) {
+      // Generous bounds check around 3D platform
+      if (Math.abs(hitPoint.x) > HALF_SPAN + 1.6 || Math.abs(hitPoint.z) > HALF_SPAN + 1.6) {
         return null;
       }
 
@@ -488,10 +497,45 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
       const rawC = hitPoint.x / CELL_PITCH + (GRID_SIZE - 1) / 2 - centerColOffset;
       const rawR = hitPoint.z / CELL_PITCH + (GRID_SIZE - 1) / 2 - centerRowOffset;
 
-      const c = Math.round(rawC);
-      const r = Math.round(rawR);
-      if (r < -1 || c < -1 || r >= GRID_SIZE || c >= GRID_SIZE) return null;
-      return { r, c };
+      const baseC = Math.round(rawC);
+      const baseR = Math.round(rawR);
+
+      const currentGrid = sceneBridgeRef.current.grid;
+
+      // 1. Exact snap check
+      if (canPlace(currentGrid, piece, baseR, baseC)) {
+        return { r: baseR, c: baseC };
+      }
+
+      // 2. Magnetic snapping to closest valid neighbor within forgiving radius (~0.95 pitch)
+      let bestCandidate: { r: number; c: number } | null = null;
+      let minDistanceSq = 0.95 * 0.95;
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const candR = baseR + dr;
+          const candC = baseC + dc;
+          if (canPlace(currentGrid, piece, candR, candC)) {
+            const dSq = (rawR - candR) ** 2 + (rawC - candC) ** 2;
+            if (dSq < minDistanceSq) {
+              minDistanceSq = dSq;
+              bestCandidate = { r: candR, c: candC };
+            }
+          }
+        }
+      }
+
+      if (bestCandidate) {
+        return bestCandidate;
+      }
+
+      // If no valid snap found, return base coordinate if within bounds to show red invalid preview
+      if (baseR >= -1 && baseC >= -1 && baseR < GRID_SIZE && baseC < GRID_SIZE) {
+        return { r: baseR, c: baseC };
+      }
+
+      return null;
     };
 
     sceneBridgeRef.current.raycastAt = raycastAt;
@@ -757,7 +801,16 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
         dragging.piece,
         e.pointerType
       );
-      const placed = anchor ? commitDrop(dragging.trayIndex, dragging.piece, anchor) : false;
+      // Fallback: if release coordinates shifted slightly or jittered, but hoverAnchor was valid,
+      // snap directly to the previewed spot!
+      const targetAnchor =
+        anchor && canPlace(grid, dragging.piece, anchor.r, anchor.c)
+          ? anchor
+          : hoverAnchor && canPlace(grid, dragging.piece, hoverAnchor.r, hoverAnchor.c)
+          ? hoverAnchor
+          : anchor;
+
+      const placed = targetAnchor ? commitDrop(dragging.trayIndex, dragging.piece, targetAnchor) : false;
 
       // Support tap-to-select on mobile/desktop if user tapped tray piece without dragging
       if (!placed && !dragging.moved) {
@@ -776,7 +829,7 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [dragging, commitDrop]);
+  }, [dragging, hoverAnchor, grid, commitDrop]);
 
   const restart = () => {
     sceneBridgeRef.current.anims = Array.from({ length: GRID_SIZE }, () =>
@@ -805,7 +858,7 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
           if (dragging || selectedTrayIdx === null) return;
           const piece = tray[selectedTrayIdx];
           if (!piece) return;
-          setHoverAnchor(sceneBridgeRef.current.raycastAt(e.clientX, e.clientY, piece, e.pointerType));
+          setHoverAnchor(sceneBridgeRef.current.raycastAt(e.clientX, e.clientY, piece, e.pointerType, true));
         }}
         onPointerLeave={() => {
           if (!dragging) setHoverAnchor(null);
@@ -814,7 +867,7 @@ export const BlockBlastGame: React.FC<BlockBlastGameProps> = ({
           if (dragging || selectedTrayIdx === null) return;
           const piece = tray[selectedTrayIdx];
           if (!piece) return;
-          const anchor = sceneBridgeRef.current.raycastAt(e.clientX, e.clientY, piece, e.pointerType);
+          const anchor = sceneBridgeRef.current.raycastAt(e.clientX, e.clientY, piece, e.pointerType, true);
           if (anchor) {
             commitDrop(selectedTrayIdx, piece, anchor);
           }
