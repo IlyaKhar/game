@@ -68,17 +68,43 @@ async function request<T>(
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('Authorization', 'Bearer ' + token);
   }
 
-  const res = await fetch(path, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...options, headers });
+  } catch {
+    throw new Error('Сервер бэкенда недоступен. Запустите в терминале: cd backend && go run ./cmd/api');
+  }
+
   if (res.status === 204) {
     return undefined as T;
   }
+
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  const trimmed = text.trim();
+  if (trimmed.startsWith('<') || res.headers.get('content-type')?.includes('text/html')) {
+    throw new Error('Сервер бэкенда не запущен на порту 8080. Запустите: cd backend && go run ./cmd/api');
+  }
+
+  let data: Record<string, unknown> | null = null;
+  if (text) {
+    try {
+      data = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      if (!res.ok) {
+        throw new Error('Ошибка сервера (' + String(res.status) + '): бэкенд вернул некорректный ответ');
+      }
+      throw new Error('Сервер вернул некорректный ответ');
+    }
+  } else {
+    data = {};
+  }
   if (!res.ok) {
-    throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`);
+    let errorMsg = data && typeof data.error === 'string' ? data.error : ('HTTP ' + String(res.status));
+    errorMsg = errorMsg.replace(/^invalid input:\s*/i, '');
+    throw new Error(errorMsg);
   }
   return data as T;
 }

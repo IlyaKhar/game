@@ -55,10 +55,16 @@ func main() {
 	app.Use("/api/auth", limiter.New(limiter.Config{
 		Max:        60,
 		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "слишком много попыток входа, подождите минуту"})
+		},
 	}))
 	app.Use("/api/admin/login", limiter.New(limiter.Config{
 		Max:        15,
 		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "слишком много попыток входа в админку"})
+		},
 	}))
 
 	handler.RegisterRoutes(app)
@@ -79,4 +85,3 @@ func main() {
 		log.Printf("graceful shutdown error: %v", err)
 	}
 }
-

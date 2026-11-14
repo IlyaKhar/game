@@ -61,6 +61,10 @@ func (s *FestivalService) Enter(ctx context.Context, req domain.EnterRequest) (s
 		return "", domain.PlayerSummary{}, fmt.Errorf("%w: введите Фамилию и Имя через пробел", domain.ErrInvalidInput)
 	}
 
+	if strings.EqualFold(parts[0], parts[1]) {
+		return "", domain.PlayerSummary{}, fmt.Errorf("%w: фамилия и имя не могут совпадать", domain.ErrInvalidInput)
+	}
+
 	for _, part := range parts {
 		runes := []rune(part)
 		if len(runes) < 2 {
